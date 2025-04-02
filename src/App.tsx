@@ -16,6 +16,7 @@ import ProductDetail from "./pages/marketplace/ProductDetail";
 import ProductManagement from "./pages/farmer/ProductManagement";
 import AddProduct from "./pages/farmer/AddProduct";
 import EditProduct from "./pages/farmer/EditProduct";
+import FarmerDashboard from "./pages/farmer/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,8 @@ const App = () => (
                 <ProtectedRoute allowedRoles={['farmer', 'admin']}>
                   {/* Farmer routes will be nested here */}
                   <Routes>
+                    <Route path="/" element={<FarmerDashboard />} />
+                    <Route path="dashboard" element={<FarmerDashboard />} />
                     <Route path="products" element={<ProductManagement />} />
                     <Route path="product/add" element={<AddProduct />} />
                     <Route path="product/edit/:id" element={<EditProduct />} />

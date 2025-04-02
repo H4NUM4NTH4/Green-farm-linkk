@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,7 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 const AuthPage: React.FC = () => {
-  const { user, isLoading, signIn, signUp, signInWithGoogle, signInWithPhone, verifyOtp } = useAuth();
+  const { user, isLoading, signIn, signUp, signInWithGoogle, signInWithPhone, verifyOtp, profile } = useAuth();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<string>('login');
@@ -25,10 +24,15 @@ const AuthPage: React.FC = () => {
   const [userRole, setUserRole] = useState<'farmer' | 'buyer'>('buyer');
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Redirect if already logged in
-  if (user && !isLoading) {
-    return <Navigate to="/" />;
-  }
+  useEffect(() => {
+    if (user && !isLoading) {
+      if (profile?.role === 'farmer') {
+        navigate('/farmer/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, isLoading, profile, navigate]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

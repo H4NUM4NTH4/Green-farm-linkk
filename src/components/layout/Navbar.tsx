@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, User, ShoppingCart, Sun, Moon, LogOut, ShieldCheck, Leaf } from 'lucide-react';
+import { Menu, X, User, ShoppingCart, Sun, Moon, LogOut, ShieldCheck, Leaf, Package, Plus } from 'lucide-react';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
@@ -79,16 +78,22 @@ const Navbar = () => {
               </Link>
               
               {user && (
-                <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">
+                <Link to={hasRole('farmer') ? "/farmer/dashboard" : "/dashboard"} className="text-foreground hover:text-primary transition-colors">
                   Dashboard
                 </Link>
               )}
               
               {hasRole('farmer') && (
-                <Link to="/farmer/crops" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
-                  <Leaf size={16} />
-                  <span>My Crops</span>
-                </Link>
+                <>
+                  <Link to="/farmer/products" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Package size={16} />
+                    <span>My Products</span>
+                  </Link>
+                  <Link to="/farmer/product/add" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <Plus size={16} />
+                    <span>Add Product</span>
+                  </Link>
+                </>
               )}
               
               {hasRole('admin') && (
@@ -141,7 +146,7 @@ const Navbar = () => {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                    <DropdownMenuItem onClick={() => navigate(hasRole('farmer') ? '/farmer/dashboard' : '/dashboard')}>
                       Dashboard
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
@@ -149,10 +154,16 @@ const Navbar = () => {
                     </DropdownMenuItem>
                     
                     {hasRole('farmer') && (
-                      <DropdownMenuItem onClick={() => navigate('/farmer/crops')}>
-                        <Leaf className="mr-2 h-4 w-4" />
-                        <span>My Crops</span>
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => navigate('/farmer/products')}>
+                          <Package className="mr-2 h-4 w-4" />
+                          <span>My Products</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate('/farmer/product/add')}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          <span>Add Product</span>
+                        </DropdownMenuItem>
+                      </>
                     )}
                     
                     {hasRole('admin') && (
@@ -213,7 +224,7 @@ const Navbar = () => {
               
               {user && (
                 <Link 
-                  to="/dashboard" 
+                  to={hasRole('farmer') ? "/farmer/dashboard" : "/dashboard"}
                   className="block py-2 text-foreground hover:text-primary"
                   onClick={() => setIsOpen(false)}
                 >
@@ -222,14 +233,24 @@ const Navbar = () => {
               )}
               
               {hasRole('farmer') && (
-                <Link 
-                  to="/farmer/crops"
-                  className="block py-2 text-foreground hover:text-primary flex items-center gap-2"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Leaf size={16} />
-                  <span>My Crops</span>
-                </Link>
+                <>
+                  <Link 
+                    to="/farmer/products"
+                    className="block py-2 text-foreground hover:text-primary flex items-center gap-2"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Package size={16} />
+                    <span>My Products</span>
+                  </Link>
+                  <Link 
+                    to="/farmer/product/add"
+                    className="block py-2 text-foreground hover:text-primary flex items-center gap-2"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Plus size={16} />
+                    <span>Add Product</span>
+                  </Link>
+                </>
               )}
               
               {hasRole('admin') && (
