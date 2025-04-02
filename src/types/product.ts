@@ -1,9 +1,34 @@
 
-import { Database } from "@/integrations/supabase/types";
+// Define product status type
+export type ProductStatus = 'active' | 'sold' | 'suspended';
 
-export type Product = Database["public"]["Tables"]["products"]["Row"];
-export type ProductImage = Database["public"]["Tables"]["product_images"]["Row"];
+// Base Product type
+export type Product = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  quantity: number;
+  quantity_unit: string;
+  location: string;
+  category: string;
+  status: ProductStatus;
+  created_at: string;
+  updated_at: string;
+  ai_recommended: boolean | null;
+};
 
+// Product Image type
+export type ProductImage = {
+  id: string;
+  product_id: string;
+  image_path: string;
+  is_primary: boolean | null;
+  created_at: string;
+};
+
+// Extended Product type with images and seller info
 export type ProductWithImages = Product & {
   images: ProductImage[];
   primary_image?: string;

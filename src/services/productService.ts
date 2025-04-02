@@ -1,151 +1,189 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Product, ProductFilter, ProductWithImages } from "@/types/product";
+import { Product, ProductFilter, ProductWithImages, ProductImage } from "@/types/product";
 import { toast } from "@/components/ui/use-toast";
 
 // Fetch products with filtering
 export const fetchProducts = async (filter?: ProductFilter) => {
-  let query = supabase
-    .from('products')
-    .select(`
-      *,
-      product_images (*),
-      profiles:user_id (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
-    .eq('status', 'active');
+  try {
+    let query = supabase
+      .from('products')
+      .select('*');
 
-  // Apply filters
-  if (filter) {
-    if (filter.search) {
-      query = query.ilike('name', `%${filter.search}%`);
-    }
-    
-    if (filter.category && filter.category !== 'All') {
-      query = query.eq('category', filter.category);
-    }
-    
-    if (filter.location && filter.location !== 'All Locations') {
-      query = query.eq('location', filter.location);
-    }
-    
-    if (filter.minPrice !== undefined) {
-      query = query.gte('price', filter.minPrice);
-    }
-    
-    if (filter.maxPrice !== undefined) {
-      query = query.lte('price', filter.maxPrice);
-    }
-    
-    if (filter.verifiedOnly) {
-      // Logic for verified sellers would go here
-      // This is a placeholder as we don't have a verified field yet
-    }
-    
-    if (filter.aiRecommended) {
-      query = query.eq('ai_recommended', true);
-    }
-    
-    // Apply sorting
-    if (filter.sortBy) {
-      switch (filter.sortBy) {
-        case 'newest':
-          query = query.order('created_at', { ascending: false });
-          break;
-        case 'price-low':
-          query = query.order('price', { ascending: true });
-          break;
-        case 'price-high':
-          query = query.order('price', { ascending: false });
-          break;
-        // Rating would require a ratings table
-        default:
-          query = query.order('created_at', { ascending: false });
+    // Apply filters
+    if (filter) {
+      if (filter.search) {
+        query = query.ilike('name', `%${filter.search}%`);
       }
-    } else {
-      // Default sorting by newest
-      query = query.order('created_at', { ascending: false });
-    }
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching products:', error);
-    throw error;
-  }
-
-  // Process the data to add primary image URL and format it
-  const productsWithImages = data.map((item: any) => {
-    const primaryImage = item.product_images.find((img: any) => img.is_primary);
-    const imageUrl = primaryImage 
-      ? `${supabase.storage.from('product-images').getPublicUrl(primaryImage.image_path).data.publicUrl}` 
-      : item.product_images.length > 0 
-        ? `${supabase.storage.from('product-images').getPublicUrl(item.product_images[0].image_path).data.publicUrl}`
-        : '/placeholder.svg';
-    
-    return {
-      ...item,
-      primary_image: imageUrl,
-      seller: {
-        id: item.profiles.id,
-        full_name: item.profiles.full_name,
-        avatar_url: item.profiles.avatar_url,
-        verified: true // Placeholder, we can add verification logic later
+      
+      if (filter.category && filter.category !== 'All') {
+        query = query.eq('category', filter.category);
       }
-    };
-  });
+      
+      if (filter.location && filter.location !== 'All Locations') {
+        query = query.eq('location', filter.location);
+      }
+      
+      if (filter.minPrice !== undefined) {
+        query = query.gte('price', filter.minPrice);
+      }
+      
+      if (filter.maxPrice !== undefined) {
+        query = query.lte('price', filter.maxPrice);
+      }
+      
+      if (filter.verifiedOnly) {
+        // Logic for verified sellers would go here
+        // This is a placeholder as we don't have a verified field yet
+      }
+      
+      if (filter.aiRecommended) {
+        query = query.eq('ai_recommended', true);
+      }
+      
+      // Apply sorting
+      if (filter.sortBy) {
+        switch (filter.sortBy) {
+          case 'newest':
+            query = query.order('created_at', { ascending: false });
+            break;
+          case 'price-low':
+            query = query.order('price', { ascending: true });
+            break;
+          case 'price-high':
+            query = query.order('price', { ascending: false });
+            break;
+          // Rating would require a ratings table
+          default:
+            query = query.order('created_at', { ascending: false });
+        }
+      } else {
+        // Default sorting by newest
+        query = query.order('created_at', { ascending: false });
+      }
+    }
 
-  return productsWithImages as ProductWithImages[];
+    const { data: products, error } = await query;
+
+    if (error) {
+      console.error('Error fetching products:', error);
+      throw error;
+    }
+
+    // Fetch product images separately for each product
+    const productsWithImages: ProductWithImages[] = await Promise.all(
+      products.map(async (product: Product) => {
+        // Get images for this product
+        const { data: productImages, error: imagesError } = await supabase
+          .from('product_images')
+          .select('*')
+          .eq('product_id', product.id);
+        
+        if (imagesError) {
+          console.error('Error fetching product images:', imagesError);
+          return {
+            ...product,
+            images: [],
+            primary_image: '/placeholder.svg'
+          };
+        }
+
+        // Get seller info
+        const { data: sellerData, error: sellerError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', product.user_id)
+          .single();
+        
+        // Find primary image or use first one
+        const primaryImage = productImages.find((img: ProductImage) => img.is_primary);
+        const imageUrl = primaryImage 
+          ? supabase.storage.from('product-images').getPublicUrl(primaryImage.image_path).data.publicUrl
+          : productImages.length > 0 
+            ? supabase.storage.from('product-images').getPublicUrl(productImages[0].image_path).data.publicUrl
+            : '/placeholder.svg';
+        
+        return {
+          ...product,
+          images: productImages || [],
+          primary_image: imageUrl,
+          seller: sellerError ? undefined : {
+            id: sellerData.id,
+            full_name: sellerData.full_name,
+            avatar_url: sellerData.avatar_url,
+            verified: true // Placeholder, we can add verification logic later
+          }
+        };
+      })
+    );
+
+    return productsWithImages;
+  } catch (error) {
+    console.error('Error in fetchProducts:', error);
+    return [];
+  }
 };
 
 // Fetch a single product by ID
 export const fetchProductById = async (id: string) => {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_images (*),
-      profiles:user_id (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
-    .eq('id', id)
-    .single();
+  try {
+    const { data: product, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    console.error('Error fetching product:', error);
-    throw error;
-  }
+    if (error) {
+      console.error('Error fetching product:', error);
+      throw error;
+    }
 
-  // Process images to add full URLs
-  const product = {
-    ...data,
-    images: data.product_images.map((img: any) => ({
+    // Get images for this product
+    const { data: productImages, error: imagesError } = await supabase
+      .from('product_images')
+      .select('*')
+      .eq('product_id', id);
+    
+    if (imagesError) {
+      console.error('Error fetching product images:', imagesError);
+    }
+
+    // Get seller info
+    const { data: sellerData, error: sellerError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', product.user_id)
+      .single();
+
+    // Process images to add full URLs
+    const images = productImages ? productImages.map((img: ProductImage) => ({
       ...img,
       url: supabase.storage.from('product-images').getPublicUrl(img.image_path).data.publicUrl
-    })),
-    primary_image: data.product_images.find((img: any) => img.is_primary)
-      ? supabase.storage.from('product-images').getPublicUrl(
-          data.product_images.find((img: any) => img.is_primary).image_path
-        ).data.publicUrl
-      : data.product_images.length > 0
-        ? supabase.storage.from('product-images').getPublicUrl(data.product_images[0].image_path).data.publicUrl
-        : '/placeholder.svg',
-    seller: {
-      id: data.profiles.id,
-      full_name: data.profiles.full_name,
-      avatar_url: data.profiles.avatar_url,
-      verified: true // Placeholder for verification
-    }
-  };
+    })) : [];
 
-  return product as ProductWithImages;
+    // Find primary image
+    const primaryImage = images.find(img => img.is_primary);
+    const primaryImageUrl = primaryImage
+      ? primaryImage.url
+      : images.length > 0
+        ? images[0].url
+        : '/placeholder.svg';
+
+    return {
+      ...product,
+      images,
+      primary_image: primaryImageUrl,
+      seller: sellerError ? undefined : {
+        id: sellerData.id,
+        full_name: sellerData.full_name,
+        avatar_url: sellerData.avatar_url,
+        verified: true // Placeholder for verification
+      }
+    } as ProductWithImages;
+  } catch (error) {
+    console.error('Error in fetchProductById:', error);
+    throw error;
+  }
 };
 
 // Create a new product
