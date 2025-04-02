@@ -116,10 +116,10 @@ const Navbar = () => {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem as={Link} to="/dashboard">
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                       Dashboard
                     </DropdownMenuItem>
-                    <DropdownMenuItem as={Link} to="/profile">
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
                       Profile
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
