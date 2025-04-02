@@ -10,6 +10,8 @@ import Marketplace from "./pages/Marketplace";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import Unauthorized from "./pages/Unauthorized";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -22,10 +24,55 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/auth" element={<Auth />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            
+            {/* Protected routes with role-based access */}
+            <Route 
+              path="/marketplace" 
+              element={
+                <ProtectedRoute requireAuth={false}>
+                  <Marketplace />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/farmer/*" 
+              element={
+                <ProtectedRoute allowedRoles={['farmer', 'admin']}>
+                  {/* Farmer routes will be nested here */}
+                  <Routes>
+                    <Route path="crops" element={<div>Farmer Crops Page (Placeholder)</div>} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/admin/*" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  {/* Admin routes will be nested here */}
+                  <Routes>
+                    <Route path="users" element={<div>User Management (Placeholder)</div>} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

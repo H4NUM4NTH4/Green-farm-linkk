@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, User, ShoppingCart, Sun, Moon, LogOut } from 'lucide-react';
+import { Menu, X, User, ShoppingCart, Sun, Moon, LogOut, ShieldCheck, Leaf } from 'lucide-react';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuthorization } from '@/hooks/useAuthorization';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ const Navbar = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
+  const { hasRole } = useAuthorization();
   const navigate = useNavigate();
 
   const toggleTheme = () => {
@@ -75,9 +77,27 @@ const Navbar = () => {
               <Link to="/marketplace" className="text-foreground hover:text-primary transition-colors">
                 Marketplace
               </Link>
-              <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">
-                Dashboard
-              </Link>
+              
+              {user && (
+                <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+              )}
+              
+              {hasRole('farmer') && (
+                <Link to="/farmer/crops" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                  <Leaf size={16} />
+                  <span>My Crops</span>
+                </Link>
+              )}
+              
+              {hasRole('admin') && (
+                <Link to="/admin/users" className="text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                  <ShieldCheck size={16} />
+                  <span>Admin</span>
+                </Link>
+              )}
+              
               <Link to="/community" className="text-foreground hover:text-primary transition-colors">
                 Community
               </Link>
@@ -113,6 +133,11 @@ const Navbar = () => {
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">{profile?.full_name || 'User'}</p>
                         <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                        {profile && (
+                          <span className="text-xs rounded bg-primary/10 text-primary px-1.5 py-0.5 mt-1 inline-block w-fit">
+                            {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+                          </span>
+                        )}
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -122,6 +147,21 @@ const Navbar = () => {
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       Profile
                     </DropdownMenuItem>
+                    
+                    {hasRole('farmer') && (
+                      <DropdownMenuItem onClick={() => navigate('/farmer/crops')}>
+                        <Leaf className="mr-2 h-4 w-4" />
+                        <span>My Crops</span>
+                      </DropdownMenuItem>
+                    )}
+                    
+                    {hasRole('admin') && (
+                      <DropdownMenuItem onClick={() => navigate('/admin/users')}>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Manage Users</span>
+                      </DropdownMenuItem>
+                    )}
+                    
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
@@ -170,13 +210,39 @@ const Navbar = () => {
               >
                 Marketplace
               </Link>
-              <Link 
-                to="/dashboard" 
-                className="block py-2 text-foreground hover:text-primary"
-                onClick={() => setIsOpen(false)}
-              >
-                Dashboard
-              </Link>
+              
+              {user && (
+                <Link 
+                  to="/dashboard" 
+                  className="block py-2 text-foreground hover:text-primary"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              )}
+              
+              {hasRole('farmer') && (
+                <Link 
+                  to="/farmer/crops"
+                  className="block py-2 text-foreground hover:text-primary flex items-center gap-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Leaf size={16} />
+                  <span>My Crops</span>
+                </Link>
+              )}
+              
+              {hasRole('admin') && (
+                <Link 
+                  to="/admin/users"
+                  className="block py-2 text-foreground hover:text-primary flex items-center gap-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <ShieldCheck size={16} />
+                  <span>Admin</span>
+                </Link>
+              )}
+              
               <Link 
                 to="/community" 
                 className="block py-2 text-foreground hover:text-primary"
