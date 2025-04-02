@@ -26,6 +26,7 @@ export type ProductImage = {
   image_path: string;
   is_primary: boolean | null;
   created_at: string;
+  url?: string; // Add the optional url property
 };
 
 // Extended Product type with images and seller info
