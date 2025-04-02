@@ -9,6 +9,86 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      product_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_path: string
+          is_primary: boolean | null
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_path: string
+          is_primary?: boolean | null
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_path?: string
+          is_primary?: boolean | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          ai_recommended: boolean | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          location: string
+          name: string
+          price: number
+          quantity: number
+          quantity_unit: string
+          status: Database["public"]["Enums"]["product_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_recommended?: boolean | null
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          location: string
+          name: string
+          price: number
+          quantity: number
+          quantity_unit: string
+          status?: Database["public"]["Enums"]["product_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_recommended?: boolean | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string
+          name?: string
+          price?: number
+          quantity?: number
+          quantity_unit?: string
+          status?: Database["public"]["Enums"]["product_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -47,6 +127,7 @@ export type Database = {
       }
     }
     Enums: {
+      product_status: "active" | "sold" | "suspended"
       user_role: "farmer" | "buyer" | "admin"
     }
     CompositeTypes: {

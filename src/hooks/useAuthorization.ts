@@ -1,13 +1,13 @@
 
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 
-type Permission = 'list-crops' | 'purchase-crops' | 'manage-users';
+type Permission = 'list-crops' | 'purchase-crops' | 'manage-users' | 'edit-product' | 'delete-product';
 
 // Map permissions to roles
 const rolePermissions: Record<UserRole, Permission[]> = {
-  farmer: ['list-crops', 'purchase-crops'],
+  farmer: ['list-crops', 'purchase-crops', 'edit-product', 'delete-product'],
   buyer: ['purchase-crops'],
-  admin: ['list-crops', 'purchase-crops', 'manage-users']
+  admin: ['list-crops', 'purchase-crops', 'manage-users', 'edit-product', 'delete-product']
 };
 
 export const useAuthorization = () => {

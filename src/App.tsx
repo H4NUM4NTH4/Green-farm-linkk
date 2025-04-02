@@ -12,6 +12,10 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ProductDetail from "./pages/marketplace/ProductDetail";
+import ProductManagement from "./pages/farmer/ProductManagement";
+import AddProduct from "./pages/farmer/AddProduct";
+import EditProduct from "./pages/farmer/EditProduct";
 
 const queryClient = new QueryClient();
 
@@ -27,16 +31,11 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             
-            {/* Protected routes with role-based access */}
-            <Route 
-              path="/marketplace" 
-              element={
-                <ProtectedRoute requireAuth={false}>
-                  <Marketplace />
-                </ProtectedRoute>
-              } 
-            />
+            {/* Marketplace routes */}
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/marketplace/product/:id" element={<ProductDetail />} />
             
+            {/* Protected routes with role-based access */}
             <Route 
               path="/dashboard" 
               element={
@@ -52,6 +51,9 @@ const App = () => (
                 <ProtectedRoute allowedRoles={['farmer', 'admin']}>
                   {/* Farmer routes will be nested here */}
                   <Routes>
+                    <Route path="products" element={<ProductManagement />} />
+                    <Route path="product/add" element={<AddProduct />} />
+                    <Route path="product/edit/:id" element={<EditProduct />} />
                     <Route path="crops" element={<div>Farmer Crops Page (Placeholder)</div>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
