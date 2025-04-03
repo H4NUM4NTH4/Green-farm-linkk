@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -25,14 +25,21 @@ const AuthPage: React.FC = () => {
   const [userRole, setUserRole] = useState<'farmer' | 'buyer'>('buyer');
   const [loading, setLoading] = useState<boolean>(false);
 
+  // Redirect logged-in users based on their role
   useEffect(() => {
     if (user && !isLoading) {
+      console.log("User profile in Auth.tsx:", profile);
+      console.log("User role:", profile?.role);
+      
       // Redirect based on user role
       if (profile?.role === 'farmer') {
+        console.log("Redirecting to farmer dashboard");
         navigate('/farmer/dashboard');
       } else if (profile?.role === 'admin') {
+        console.log("Redirecting to admin dashboard");
         navigate('/admin');
       } else {
+        console.log("Redirecting to buyer dashboard");
         navigate('/dashboard');
       }
     }
@@ -67,6 +74,7 @@ const AuthPage: React.FC = () => {
     setLoading(true);
     
     try {
+      console.log("Signing up with role:", userRole);
       await signUp(email, password, name, userRole);
       setActiveTab('login');
     } catch (error) {

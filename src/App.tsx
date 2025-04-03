@@ -70,6 +70,7 @@ const App = () => (
                 <ProtectedRoute allowedRoles={['admin']}>
                   {/* Admin routes will be nested here */}
                   <Routes>
+                    <Route path="/" element={<div>Admin Dashboard (Placeholder)</div>} />
                     <Route path="users" element={<div>User Management (Placeholder)</div>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

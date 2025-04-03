@@ -23,6 +23,8 @@ export const useAuthorization = () => {
   const hasRole = (role: UserRole | UserRole[]): boolean => {
     if (!isAuthenticated || !profile) return false;
     
+    console.log("Checking role:", role, "Current role:", profile.role);
+    
     if (Array.isArray(role)) {
       return role.includes(profile.role);
     }

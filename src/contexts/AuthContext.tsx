@@ -172,6 +172,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, full_name: string, role: UserRole) => {
     try {
+      // First, check if there's an existing record with the email
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+      
+      if (existingUsers) {
+        toast({
+          title: "Email already in use",
+          description: "This email is already registered",
+          variant: "destructive",
+        });
+        throw new Error("Email already registered");
+      }
+      
+      // Proceed with signup
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -184,6 +205,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) throw error;
+      
+      // After successful signup, let's directly update the profiles table
+      // to make sure the role is correctly set
+      if (role === 'farmer') {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ role: 'farmer' })
+          .eq('id', (await supabase.auth.getUser()).data.user?.id);
+          
+        if (profileError) {
+          console.error('Error updating profile role:', profileError);
+        }
+      }
       
       toast({
         title: "Sign up successful",

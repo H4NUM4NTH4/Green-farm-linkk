@@ -58,6 +58,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
     
     try {
+      console.log("Signing up with role:", userRole);
       await signUp(email, password, name, userRole);
       setActiveTab('login');
       toast({
