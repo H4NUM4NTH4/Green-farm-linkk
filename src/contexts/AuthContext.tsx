@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch profile when user changes
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) {
@@ -62,7 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // Use setTimeout to avoid deadlocks with Supabase auth state changes
     if (user) {
       setTimeout(() => {
         fetchProfile();
@@ -70,9 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  // Initialize auth state
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log('Auth state changed:', event);
@@ -81,7 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
@@ -172,18 +166,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, full_name: string, role: UserRole) => {
     try {
-      // First, check if there's an existing record with the email
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
+      const { data: existingUser, error: emailCheckError } = await supabase.auth.signInWithPassword({
+        email,
+        password: 'dummy-password-for-check',
+      });
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-      
-      if (existingUsers) {
+      if (existingUser?.user || (emailCheckError && emailCheckError.message !== 'Invalid login credentials')) {
         toast({
           title: "Email already in use",
           description: "This email is already registered",
@@ -192,7 +180,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Email already registered");
       }
       
-      // Proceed with signup
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -206,16 +193,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) throw error;
       
-      // After successful signup, let's directly update the profiles table
-      // to make sure the role is correctly set
       if (role === 'farmer') {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ role: 'farmer' })
-          .eq('id', (await supabase.auth.getUser()).data.user?.id);
-          
-        if (profileError) {
-          console.error('Error updating profile role:', profileError);
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+        
+        if (newUser) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ role: 'farmer' })
+            .eq('id', newUser.id);
+            
+          if (profileError) {
+            console.error('Error updating profile role:', profileError);
+          }
         }
       }
       
@@ -257,7 +246,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (error) throw error;
       
-      // Update local profile state
       setProfile(prev => prev ? { ...prev, ...updates } : null);
       
       toast({
