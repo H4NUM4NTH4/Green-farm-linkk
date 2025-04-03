@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,8 +27,11 @@ const AuthPage: React.FC = () => {
 
   useEffect(() => {
     if (user && !isLoading) {
+      // Redirect based on user role
       if (profile?.role === 'farmer') {
         navigate('/farmer/dashboard');
+      } else if (profile?.role === 'admin') {
+        navigate('/admin');
       } else {
         navigate('/dashboard');
       }
@@ -40,7 +44,7 @@ const AuthPage: React.FC = () => {
     
     try {
       await signIn(email, password);
-      navigate('/');
+      // No need to navigate here, the useEffect will handle redirection based on role
     } catch (error) {
       console.error('Login error:', error);
     } finally {
