@@ -17,6 +17,7 @@ import ProductManagement from "./pages/farmer/ProductManagement";
 import AddProduct from "./pages/farmer/AddProduct";
 import EditProduct from "./pages/farmer/EditProduct";
 import FarmerDashboard from "./pages/farmer/Dashboard";
+import Community from "./pages/Community";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/community" element={<Community />} />
             
             {/* Marketplace routes */}
             <Route path="/marketplace" element={<Marketplace />} />
