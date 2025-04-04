@@ -13,6 +13,7 @@ import { ChevronDown, Filter, Search, Sliders, X } from 'lucide-react';
 import { fetchProducts } from '@/services/productService';
 import { ProductWithImages, ProductFilter, productCategories } from '@/types/product';
 import { toast } from '@/components/ui/use-toast';
+import { useAuthorization } from '@/hooks/useAuthorization';
 
 const locations = ['All Locations', 'Kansas City, MO', 'San Joaquin Valley, CA', 'Portland, OR', 'Austin, TX', 'Yakima Valley, WA', 'Hudson Valley, NY'];
 
@@ -25,6 +26,7 @@ const Marketplace = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<ProductWithImages[]>([]);
+  const { isAuthenticated, userRole } = useAuthorization();
   
   // Define filter object based on UI state
   const filter: ProductFilter = {
@@ -41,6 +43,7 @@ const Marketplace = () => {
     const loadProducts = async () => {
       try {
         setIsLoading(true);
+        // Fetch all active products regardless of user role
         const data = await fetchProducts(filter);
         setProducts(data);
       } catch (error) {

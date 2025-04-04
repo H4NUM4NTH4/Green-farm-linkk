@@ -8,7 +8,8 @@ export const fetchProducts = async (filter?: ProductFilter) => {
   try {
     let query = supabase
       .from('products')
-      .select('*');
+      .select('*')
+      .eq('status', 'active'); // Only fetch active products
 
     // Apply filters
     if (filter) {
@@ -95,17 +96,23 @@ export const fetchProducts = async (filter?: ProductFilter) => {
           .eq('id', product.user_id)
           .single();
         
+        // Process images to add URLs
+        const processedImages = productImages.map((img: ProductImage) => ({
+          ...img,
+          url: supabase.storage.from('product-images').getPublicUrl(img.image_path).data.publicUrl
+        }));
+        
         // Find primary image or use first one
-        const primaryImage = productImages.find((img: ProductImage) => img.is_primary);
+        const primaryImage = processedImages.find((img) => img.is_primary);
         const imageUrl = primaryImage 
-          ? supabase.storage.from('product-images').getPublicUrl(primaryImage.image_path).data.publicUrl
-          : productImages.length > 0 
-            ? supabase.storage.from('product-images').getPublicUrl(productImages[0].image_path).data.publicUrl
+          ? primaryImage.url
+          : processedImages.length > 0 
+            ? processedImages[0].url
             : '/placeholder.svg';
         
         return {
           ...product,
-          images: productImages || [],
+          images: processedImages || [],
           primary_image: imageUrl,
           seller: sellerError ? undefined : {
             id: sellerData.id,
