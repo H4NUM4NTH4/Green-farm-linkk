@@ -10,7 +10,9 @@ import { ProductWithImages } from '@/types/product';
 
 const Index = () => {
   const [featuredProducts, setFeaturedProducts] = useState<ProductWithImages[]>([]);
+  const [recentProducts, setRecentProducts] = useState<ProductWithImages[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(true);
 
   useEffect(() => {
     // Fetch featured products for homepage
@@ -27,7 +29,22 @@ const Index = () => {
       }
     };
 
+    // Fetch recent products for homepage
+    const loadRecentProducts = async () => {
+      try {
+        setIsLoadingRecent(true);
+        // Fetch most recent products
+        const products = await fetchProducts({ sortBy: 'newest', limit: 4 });
+        setRecentProducts(products);
+      } catch (error) {
+        console.error('Error loading recent products:', error);
+      } finally {
+        setIsLoadingRecent(false);
+      }
+    };
+
     loadFeaturedProducts();
+    loadRecentProducts();
   }, []);
 
   return (
@@ -42,6 +59,14 @@ const Index = () => {
               title="Featured Products"
               subtitle="Handpicked quality produce from verified farmers"
               isLoading={isLoading}
+            />
+          </section>
+          <section className="py-16 pt-0">
+            <ProductGrid
+              products={recentProducts}
+              title="Recently Added"
+              subtitle="Browse the latest products from our farmers"
+              isLoading={isLoadingRecent}
             />
           </section>
         </div>

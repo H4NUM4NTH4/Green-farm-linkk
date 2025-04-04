@@ -4,15 +4,24 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge';
 import { MapPin, ShoppingCart, Star } from 'lucide-react';
 import { ProductWithImages } from '@/types/product';
+import { useCart } from '@/contexts/CartContext';
 
 interface ProductCardProps {
   product: ProductWithImages;
+  linkToProduct?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, linkToProduct = true }) => {
   // Calculate a simple random rating between 4.0 and 5.0
   // In a real app, this would come from actual ratings
   const randomRating = Math.floor((Math.random() * 10) + 40) / 10;
+  const { addToCart } = useCart();
+  
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart(product, 1);
+  };
   
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md hover:border-agri-primary/40 h-full flex flex-col">
@@ -63,7 +72,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
       </CardContent>
       <CardFooter className="pt-2 border-t border-border/60">
-        <button className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-white bg-agri-primary rounded-md hover:bg-agri-primary/90 transition-colors">
+        <button 
+          className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-white bg-agri-primary rounded-md hover:bg-agri-primary/90 transition-colors"
+          onClick={handleAddToCart}
+        >
           <ShoppingCart className="h-4 w-4" />
           Add to Cart
         </button>

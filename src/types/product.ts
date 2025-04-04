@@ -50,6 +50,7 @@ export type ProductFilter = {
   sortBy?: 'newest' | 'price-low' | 'price-high' | 'rating';
   verifiedOnly?: boolean;
   aiRecommended?: boolean;
+  limit?: number;
 };
 
 export const productCategories = [
@@ -60,3 +61,16 @@ export const productCategories = [
   'Meat',
   'Specialty'
 ];
+
+// Cart item type
+export type CartItem = {
+  product: ProductWithImages;
+  quantity: number;
+};
+
+// Shopping cart state
+export type ShoppingCart = {
+  items: CartItem[];
+  totalItems: number;
+  totalPrice: number;
+};

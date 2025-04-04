@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Menu, X, User, ShoppingCart, Sun, Moon, LogOut, ShieldCheck, Leaf, Pack
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthorization } from '@/hooks/useAuthorization';
+import { useCart } from '@/contexts/CartContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -14,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from '@/components/ui/badge';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,6 +24,7 @@ const Navbar = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
   const { hasRole } = useAuthorization();
+  const { cart } = useCart();
   const navigate = useNavigate();
 
   const toggleTheme = () => {
@@ -119,8 +123,18 @@ const Navbar = () => {
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </Button>
               
-              <Button variant="ghost" size="icon" className="text-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-foreground relative"
+                onClick={() => navigate('/cart')}
+              >
                 <ShoppingCart size={20} />
+                {cart.totalItems > 0 && (
+                  <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs h-5 min-w-5 flex items-center justify-center rounded-full">
+                    {cart.totalItems > 9 ? '9+' : cart.totalItems}
+                  </Badge>
+                )}
               </Button>
               
               {user ? (
@@ -151,6 +165,15 @@ const Navbar = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/cart')}>
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      <span>Cart</span>
+                      {cart.totalItems > 0 && (
+                        <Badge className="ml-auto bg-red-500 text-white text-xs">
+                          {cart.totalItems}
+                        </Badge>
+                      )}
                     </DropdownMenuItem>
                     
                     {hasRole('farmer') && (
@@ -231,6 +254,20 @@ const Navbar = () => {
                   Dashboard
                 </Link>
               )}
+              
+              <Link 
+                to="/cart" 
+                className="block py-2 text-foreground hover:text-primary flex items-center gap-2"
+                onClick={() => setIsOpen(false)}
+              >
+                <ShoppingCart size={16} />
+                <span>Cart</span>
+                {cart.totalItems > 0 && (
+                  <Badge className="bg-red-500 text-white text-xs">
+                    {cart.totalItems}
+                  </Badge>
+                )}
+              </Link>
               
               {hasRole('farmer') && (
                 <>

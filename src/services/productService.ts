@@ -62,6 +62,11 @@ export const fetchProducts = async (filter?: ProductFilter) => {
         // Default sorting by newest
         query = query.order('created_at', { ascending: false });
       }
+      
+      // Apply limit if specified
+      if (filter.limit !== undefined) {
+        query = query.limit(filter.limit);
+      }
     }
 
     const { data: products, error } = await query;
