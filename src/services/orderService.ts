@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, ProductWithImages } from '@/types/product';
 import { fetchProductById } from './productService';
@@ -97,10 +96,29 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       return null;
     }
 
+    // Fetch product details for each order item
+    const itemsWithProducts: OrderItem[] = [];
+    for (const item of orderItems || []) {
+      try {
+        const product = await fetchProductById(item.product_id);
+        if (product) {
+          itemsWithProducts.push({
+            ...item,
+            product
+          });
+        } else {
+          itemsWithProducts.push(item);
+        }
+      } catch (e) {
+        // If we can't fetch a product, still keep the item
+        itemsWithProducts.push(item);
+      }
+    }
+
     // Create the complete order object
     const order: Order = {
       ...orderData,
-      items: orderItems || [],
+      items: itemsWithProducts,
     };
 
     return order;

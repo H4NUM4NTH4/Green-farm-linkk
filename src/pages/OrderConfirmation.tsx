@@ -10,7 +10,7 @@ import { CheckCircle, ShoppingBag, Truck, Clock } from 'lucide-react';
 import { getOrderById } from '@/services/orderService';
 import { Order } from '@/types/product';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams<{ orderId: string }>();
@@ -87,7 +87,7 @@ const OrderConfirmation = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Order #{order.id.substring(0, 8)}</h2>
                   <span className="text-sm text-muted-foreground">
-                    Placed on {formatDate(new Date(order.created_at))}
+                    Placed on {formatDate(order.created_at)}
                   </span>
                 </div>
 
@@ -116,10 +116,10 @@ const OrderConfirmation = () => {
                           <h4 className="font-medium">
                             {item.product?.name || `Product #${item.product_id.substring(0, 8)}`}
                           </h4>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
+                          <span>{formatCurrency(item.price * item.quantity)}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          ${item.price.toFixed(2)} x {item.quantity}
+                          {formatCurrency(item.price)} x {item.quantity}
                         </p>
                       </div>
                     </div>
@@ -146,7 +146,7 @@ const OrderConfirmation = () => {
                     <h3 className="font-semibold mb-2">Payment Information</h3>
                     <div className="text-sm">
                       <p>Payment Method: {order.payment_method === 'credit-card' ? 'Credit/Debit Card' : 'Cash on Delivery'}</p>
-                      <p className="font-semibold mt-4">Order Total: ${order.total_amount.toFixed(2)}</p>
+                      <p className="font-semibold mt-4">Order Total: {formatCurrency(order.total_amount)}</p>
                     </div>
                   </div>
                 </div>
