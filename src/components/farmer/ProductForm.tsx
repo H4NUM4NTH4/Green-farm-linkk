@@ -13,14 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { X, Plus, Upload, Loader2 } from 'lucide-react';
-import { Product, productCategories } from '@/types/product';
+import { Product, productCategories, ProductWithImages, ProductImage } from '@/types/product';
 import { toast } from '@/components/ui/use-toast';
 
 interface ProductFormProps {
-  initialData?: Partial<Product>;
-  onSubmit: (data: Partial<Product>, images: File[]) => Promise<void>;
+  initialData?: Partial<ProductWithImages>;
+  onSubmit: (data: Partial<Product>, images: File[], deletedImageIds: string[]) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -40,16 +39,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
     ...initialData,
   });
 
-  const [images, setImages] = useState<File[]>([]);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<File[]>([]);
+  const [newImageUrls, setNewImageUrls] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Initialize with existing images if editing
   useEffect(() => {
-    if (initialData && initialData.id) {
-      // This would be handled in the parent component since
-      // we need to fetch images from Supabase
+    if (initialData && initialData.images) {
+      setExistingImages(initialData.images);
     }
   }, [initialData]);
 
@@ -86,30 +86,45 @@ const ProductForm: React.FC<ProductFormProps> = ({
         return;
       }
       
+      // Check total number of images
+      const totalImages = existingImages.length - deletedImageIds.length + newImages.length + newFiles.length;
+      if (totalImages > 6) {
+        setImageError('Maximum 6 images allowed. Please remove some images first.');
+        return;
+      }
+      
       // Clear any previous errors
       setImageError(null);
       
       // Store the new files
-      setImages([...images, ...newFiles]);
+      setNewImages([...newImages, ...newFiles]);
       
       // Create and store URLs for preview
       const newUrls = newFiles.map(file => URL.createObjectURL(file));
-      setImageUrls([...imageUrls, ...newUrls]);
+      setNewImageUrls([...newImageUrls, ...newUrls]);
     }
   };
 
-  const removeImage = (index: number) => {
-    const newImages = [...images];
-    const newUrls = [...imageUrls];
+  const removeNewImage = (index: number) => {
+    const newImagesList = [...newImages];
+    const newUrlsList = [...newImageUrls];
     
     // Release the object URL to avoid memory leaks
-    URL.revokeObjectURL(newUrls[index]);
+    URL.revokeObjectURL(newUrlsList[index]);
     
-    newImages.splice(index, 1);
-    newUrls.splice(index, 1);
+    newImagesList.splice(index, 1);
+    newUrlsList.splice(index, 1);
     
-    setImages(newImages);
-    setImageUrls(newUrls);
+    setNewImages(newImagesList);
+    setNewImageUrls(newUrlsList);
+  };
+
+  const removeExistingImage = (image: ProductImage) => {
+    // Mark the image for deletion
+    setDeletedImageIds([...deletedImageIds, image.id]);
+    
+    // Remove from the UI
+    setExistingImages(existingImages.filter(img => img.id !== image.id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,8 +141,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
       return;
     }
     
-    // Validate images
-    if (images.length === 0 && !initialData?.id) {
+    // Validate images - only for new products
+    if (!initialData?.id && newImages.length === 0) {
       toast({
         title: "No images",
         description: "Please upload at least one product image",
@@ -137,11 +152,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
     
     try {
-      await onSubmit(formData, images);
+      await onSubmit(formData, newImages, deletedImageIds);
     } catch (error) {
       console.error('Error submitting form:', error);
     }
   };
+
+  // Get remaining images count (existing - deleted + new)
+  const remainingImagesCount = existingImages.length - deletedImageIds.length + newImages.length;
+  const canAddMoreImages = remainingImagesCount < 6;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -263,16 +282,37 @@ const ProductForm: React.FC<ProductFormProps> = ({
           <Card className="border-dashed border-2">
             <CardContent className="p-6">
               <div className="grid grid-cols-2 gap-4 mb-4">
-                {imageUrls.map((url, index) => (
-                  <div key={index} className="relative group h-32 bg-gray-100 rounded overflow-hidden">
+                {/* Display existing images that haven't been marked for deletion */}
+                {initialData?.id && existingImages
+                  .filter(img => !deletedImageIds.includes(img.id))
+                  .map((image) => (
+                    <div key={image.id} className="relative group h-32 bg-gray-100 rounded overflow-hidden">
+                      <img
+                        src={image.url}
+                        alt={`Product preview`}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeExistingImage(image)}
+                        className="absolute top-2 right-2 bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                {/* Display newly added images */}
+                {newImageUrls.map((url, index) => (
+                  <div key={`new-${index}`} className="relative group h-32 bg-gray-100 rounded overflow-hidden">
                     <img
                       src={url}
-                      alt={`Product preview ${index + 1}`}
+                      alt={`New product preview ${index + 1}`}
                       className="h-full w-full object-cover"
                     />
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
+                      onClick={() => removeNewImage(index)}
                       className="absolute top-2 right-2 bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X size={16} />
@@ -281,7 +321,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 ))}
 
                 {/* Image upload button */}
-                {images.length < 6 && (
+                {canAddMoreImages && (
                   <label className="h-32 border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
                     <div className="flex flex-col items-center justify-center">
                       <Upload size={24} className="text-gray-400 mb-2" />
@@ -292,7 +332,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       accept="image/png,image/jpeg,image/webp"
                       onChange={handleImageChange}
                       className="hidden"
-                      multiple={images.length === 0}
+                      multiple={remainingImagesCount === 0}
                     />
                   </label>
                 )}

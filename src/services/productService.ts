@@ -270,7 +270,10 @@ export const updateProduct = async (
   imagesToDelete?: string[]
 ) => {
   try {
-    // Update the product
+    console.log("Updating product with ID:", id);
+    console.log("Product data:", productData);
+    
+    // Update the product data only, not trying to update non-existent 'images' column
     const { data: product, error: productError } = await supabase
       .from('products')
       .update({
@@ -281,35 +284,53 @@ export const updateProduct = async (
       .select()
       .single();
 
-    if (productError) throw productError;
+    if (productError) {
+      console.error("Error updating product data:", productError);
+      throw productError;
+    }
 
-    // Delete images if specified
+    // Handle image deletions if specified
     if (imagesToDelete && imagesToDelete.length > 0) {
+      console.log("Deleting images:", imagesToDelete);
       for (const imageId of imagesToDelete) {
         // Get the image path first
-        const { data: imageData } = await supabase
+        const { data: imageData, error: fetchError } = await supabase
           .from('product_images')
           .select('image_path')
           .eq('id', imageId)
           .single();
         
+        if (fetchError) {
+          console.error("Error fetching image to delete:", fetchError);
+          continue; // Skip this image if we can't fetch it
+        }
+        
         if (imageData) {
           // Delete from storage
-          await supabase.storage
+          const { error: storageError } = await supabase.storage
             .from('product-images')
             .remove([imageData.image_path]);
+            
+          if (storageError) {
+            console.error("Error removing image from storage:", storageError);
+          }
           
           // Delete from database
-          await supabase
+          const { error: dbError } = await supabase
             .from('product_images')
             .delete()
             .eq('id', imageId);
+            
+          if (dbError) {
+            console.error("Error removing image from database:", dbError);
+          }
         }
       }
     }
 
     // Upload new images
     if (newImages && newImages.length > 0) {
+      console.log("Uploading new images:", newImages.length);
       for (const file of newImages) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${id}/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
@@ -318,13 +339,20 @@ export const updateProduct = async (
           .from('product-images')
           .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Error uploading new image:", uploadError);
+          throw uploadError;
+        }
 
         // Get count of existing images
-        const { count } = await supabase
+        const { count, error: countError } = await supabase
           .from('product_images')
-          .select('*', { count: 'exact' })
+          .select('*', { count: 'exact', head: true })
           .eq('product_id', id);
+        
+        if (countError) {
+          console.error("Error counting existing images:", countError);
+        }
         
         // Insert image reference in database
         const { error: imageRefError } = await supabase
@@ -335,7 +363,10 @@ export const updateProduct = async (
             is_primary: count === 0 // First image is primary if no other images exist
           });
 
-        if (imageRefError) throw imageRefError;
+        if (imageRefError) {
+          console.error("Error inserting image reference:", imageRefError);
+          throw imageRefError;
+        }
       }
     }
 

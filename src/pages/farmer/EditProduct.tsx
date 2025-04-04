@@ -18,6 +18,7 @@ const EditProduct = () => {
   const [product, setProduct] = useState<ProductWithImages | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const { hasPermission } = useAuthorization();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -56,16 +57,22 @@ const EditProduct = () => {
     loadProduct();
   }, [id, user, navigate]);
 
-  const handleSubmit = async (productData: Partial<Product>, images: File[]) => {
+  const handleSubmit = async (productData: Partial<Product>, images: File[], deletedImageIds: string[] = []) => {
     if (!id) return;
     
     try {
       setIsSaving(true);
-      await updateProduct(id, productData, images);
+      
+      // Combine any existing images to delete with newly deleted ones
+      const allImagesToDelete = [...imagesToDelete, ...deletedImageIds];
+      
+      await updateProduct(id, productData, images, allImagesToDelete);
+      
       toast({
         title: 'Product Updated',
         description: 'Your product has been updated successfully',
       });
+      
       navigate(`/marketplace/product/${id}`);
     } catch (error) {
       console.error('Failed to update product:', error);
