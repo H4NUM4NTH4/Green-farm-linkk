@@ -9,6 +9,7 @@ interface CartContextType {
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
+  isCartEmpty: () => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -123,6 +124,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     });
   };
 
+  const isCartEmpty = () => {
+    return cart.items.length === 0;
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -130,7 +135,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         addToCart,
         removeFromCart,
         updateQuantity,
-        clearCart
+        clearCart,
+        isCartEmpty
       }}
     >
       {children}

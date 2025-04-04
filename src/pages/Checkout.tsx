@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,12 +14,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/use-toast';
 import { CreditCard, Truck, MapPin, ChevronsRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { createOrder } from '@/services/orderService';
 
 const Checkout = () => {
   const { cart, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('shipping');
   const [paymentMethod, setPaymentMethod] = useState('credit-card');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [shippingInfo, setShippingInfo] = useState({
     fullName: '',
@@ -61,19 +65,73 @@ const Checkout = () => {
     setActiveTab('payment');
   };
 
-  const handlePaymentSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Submit order (placeholder for actual payment processing)
-    toast({
-      title: "Order placed successfully!",
-      description: "Your order has been placed and will be processed soon.",
-    });
-    
-    // Clear cart and redirect to home page
-    clearCart();
-    navigate('/');
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to complete your order",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      // Calculate order total with shipping and tax
+      const shipping = 5;
+      const tax = cart.totalPrice * 0.07;
+      const totalAmount = cart.totalPrice + shipping + tax;
+      
+      // Prepare order items
+      const orderItems = cart.items.map(item => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+        price: item.product.price
+      }));
+
+      // Create the order
+      const orderId = await createOrder({
+        user_id: user.id,
+        total_amount: totalAmount,
+        shipping_address: shippingInfo,
+        payment_method: paymentMethod,
+        items: orderItems
+      });
+
+      if (orderId) {
+        // Clear the cart
+        clearCart();
+        
+        // Redirect to order confirmation
+        navigate(`/order-confirmation/${orderId}`);
+      } else {
+        toast({
+          title: "Order failed",
+          description: "There was a problem creating your order. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "Order failed",
+        description: "There was a problem creating your order. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // Calculate totals
+  const shipping = 5;
+  const tax = cart.totalPrice * 0.07;
+  const total = cart.totalPrice + shipping + tax;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -272,8 +330,8 @@ const Checkout = () => {
                           >
                             Back to Shipping
                           </Button>
-                          <Button type="submit">
-                            Place Order
+                          <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? 'Processing...' : 'Place Order'}
                           </Button>
                         </div>
                       </form>
@@ -318,16 +376,16 @@ const Checkout = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Shipping</span>
-                      <span>$5.00</span>
+                      <span>${shipping.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Tax</span>
-                      <span>${(cart.totalPrice * 0.07).toFixed(2)}</span>
+                      <span>${tax.toFixed(2)}</span>
                     </div>
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between font-semibold">
                         <span>Total</span>
-                        <span>${(cart.totalPrice + 5 + cart.totalPrice * 0.07).toFixed(2)}</span>
+                        <span>${total.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

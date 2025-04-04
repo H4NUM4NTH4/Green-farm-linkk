@@ -18,9 +18,12 @@ import ProductManagement from "./pages/farmer/ProductManagement";
 import AddProduct from "./pages/farmer/AddProduct";
 import EditProduct from "./pages/farmer/EditProduct";
 import FarmerDashboard from "./pages/farmer/Dashboard";
+import OrderManagement from "./pages/farmer/OrderManagement";
+import OrderDetail from "./pages/farmer/OrderDetail";
 import Community from "./pages/Community";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +48,7 @@ const App = () => (
               {/* Cart and Checkout routes */}
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               
               {/* Protected routes with role-based access */}
               <Route 
@@ -67,6 +71,8 @@ const App = () => (
                       <Route path="products" element={<ProductManagement />} />
                       <Route path="product/add" element={<AddProduct />} />
                       <Route path="product/edit/:id" element={<EditProduct />} />
+                      <Route path="orders" element={<OrderManagement />} />
+                      <Route path="orders/:orderId" element={<OrderDetail />} />
                       <Route path="crops" element={<div>Farmer Crops Page (Placeholder)</div>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

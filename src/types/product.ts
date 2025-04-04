@@ -74,3 +74,42 @@ export type ShoppingCart = {
   totalItems: number;
   totalPrice: number;
 };
+
+// Order status type
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+
+// Order item type
+export type OrderItem = {
+  id: string;
+  order_id: string;
+  product_id: string;
+  quantity: number;
+  price: number;
+  product?: ProductWithImages;
+};
+
+// Order type
+export type Order = {
+  id: string;
+  user_id: string;
+  status: OrderStatus;
+  total_amount: number;
+  shipping_address: {
+    fullName: string;
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    phone: string;
+  };
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+  items?: OrderItem[];
+  buyer?: {
+    id: string;
+    full_name: string | null;
+    email?: string;
+  };
+};
