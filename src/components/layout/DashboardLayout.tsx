@@ -10,7 +10,7 @@ type DashboardLayoutProps = {
 };
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const location = useLocation();
   const isFarmerRoute = location.pathname.startsWith('/farmer');
 
@@ -39,7 +39,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <aside className="fixed top-20 z-30 -ml-2 hidden h-[calc(100vh-6rem)] w-full shrink-0 overflow-y-auto border-r md:sticky md:block">
           <div className="py-2 pr-6">
             <div className="px-4 py-2">
-              <h2 className="font-semibold text-lg mb-1">{user.full_name || 'User'}</h2>
+              <h2 className="font-semibold text-lg mb-1">{profile?.full_name || user.email || 'User'}</h2>
               <p className="text-sm text-muted-foreground">{isFarmerRoute ? 'Farmer' : 'Buyer'}</p>
             </div>
             <Separator className="my-4" />
