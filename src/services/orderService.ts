@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus, ProductWithImages } from '@/types/product';
 import { fetchProductById } from './productService';
@@ -86,6 +85,21 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       return null;
     }
 
+    // Handle buyer information - ensure it matches the expected type
+    const buyerInfo = orderData.buyer && 
+      typeof orderData.buyer === 'object' && 
+      orderData.buyer !== null 
+        ? {
+            id: (orderData.buyer as any)?.id || orderData.user_id,
+            full_name: (orderData.buyer as any)?.full_name || null,
+            email: (orderData.buyer as any)?.email || null
+          }
+        : {
+            id: orderData.user_id,
+            full_name: null,
+            email: null
+          };
+
     // Fetch order items
     const { data: orderItems, error: orderItemsError } = await supabase
       .from('order_items')
@@ -115,19 +129,6 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
         itemsWithProducts.push(item as OrderItem);
       }
     }
-
-    // Handle buyer information - ensure it matches the expected type
-    const buyerInfo = orderData.buyer && 
-      typeof orderData.buyer === 'object' && 
-      orderData.buyer !== null && 
-      'error' in orderData.buyer && 
-      !orderData.buyer.error 
-        ? orderData.buyer 
-        : {
-            id: orderData.user_id,
-            full_name: null,
-            email: null
-          };
 
     // Create the complete order object with proper type casting
     const order: Order = {
@@ -218,11 +219,17 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       // Handle buyer information
       const buyerInfo = order.buyer && 
         typeof order.buyer === 'object' && 
-        order.buyer !== null && 
-        'error' in order.buyer && 
-        !order.buyer.error 
-          ? order.buyer 
-          : { id: order.user_id, full_name: null, email: null };
+        order.buyer !== null
+          ? {
+              id: (order.buyer as any)?.id || order.user_id,
+              full_name: (order.buyer as any)?.full_name || null,
+              email: (order.buyer as any)?.email || null
+            }
+          : { 
+              id: order.user_id, 
+              full_name: null, 
+              email: null 
+            };
 
       return {
         ...order,
@@ -295,11 +302,17 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
     // Handle buyer information
     const buyerInfo = order.buyer && 
       typeof order.buyer === 'object' && 
-      order.buyer !== null && 
-      'error' in order.buyer && 
-      !order.buyer.error 
-        ? order.buyer 
-        : { id: order.user_id, full_name: null, email: null };
+      order.buyer !== null
+        ? {
+            id: (order.buyer as any)?.id || order.user_id,
+            full_name: (order.buyer as any)?.full_name || null,
+            email: (order.buyer as any)?.email || null
+          }
+        : { 
+            id: order.user_id, 
+            full_name: null, 
+            email: null 
+          };
 
     return {
       ...order,
