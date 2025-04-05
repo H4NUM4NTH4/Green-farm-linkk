@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus, ProductWithImages } from '@/types/product';
 import { fetchProductById } from './productService';
@@ -116,10 +115,11 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       }
     }
 
-    // Create the complete order object
+    // Create the complete order object with proper type casting
     const order: Order = {
       ...orderData,
       status: orderData.status as OrderStatus,
+      shipping_address: orderData.shipping_address as Order['shipping_address'],
       items: itemsWithProducts,
     };
 
@@ -143,10 +143,11 @@ export const getOrdersForUser = async (userId: string): Promise<Order[]> => {
       return [];
     }
 
-    // Convert the status string to OrderStatus type
+    // Cast the data to match the Order type
     const orders: Order[] = data.map(order => ({
       ...order,
-      status: order.status as OrderStatus
+      status: order.status as OrderStatus,
+      shipping_address: order.shipping_address as Order['shipping_address']
     }));
 
     return orders;
@@ -197,10 +198,11 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       return [];
     }
 
-    // Convert the status string to OrderStatus type
+    // Cast the data to match the Order type
     const typedOrders: Order[] = orders.map(order => ({
       ...order,
-      status: order.status as OrderStatus
+      status: order.status as OrderStatus,
+      shipping_address: order.shipping_address as Order['shipping_address']
     }));
 
     return typedOrders;
@@ -266,6 +268,7 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
     return {
       ...order,
       status: order.status as OrderStatus,
+      shipping_address: order.shipping_address as Order['shipping_address'],
       items: itemsWithProducts
     };
   } catch (error) {
