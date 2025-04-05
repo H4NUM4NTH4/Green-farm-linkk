@@ -40,6 +40,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
+      // Explicitly cast the items to OrderItemBasic[] to prevent excessive type instantiation
       orderIds = [...new Set((items as OrderItemBasic[]).map(item => item.order_id))];
     } 
     // If farmer_id column exists, use it directly
@@ -53,6 +54,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
+      // Explicitly cast the items to OrderItemBasic[] to prevent excessive type instantiation
       orderIds = [...new Set((items as OrderItemBasic[]).map(item => item.order_id))];
     }
 
