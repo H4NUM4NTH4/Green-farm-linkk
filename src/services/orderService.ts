@@ -198,17 +198,55 @@ export const getOrdersForUser = async (userId: string): Promise<Order[]> => {
 
 export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => {
   try {
-    // Use a more direct approach to find orders containing the farmer's products
-    const { data: orderItems, error: orderItemsError } = await supabase
+    // First check if the farmer_id column exists in the order_items table
+    const { error: columnCheckError } = await supabase
       .from('order_items')
-      .select('order_id, farmer_id')
-      .eq('farmer_id', farmerId);
-
-    if (orderItemsError || !orderItems || orderItems.length === 0) {
-      return [];
+      .select('farmer_id')
+      .limit(1);
+    
+    let orderIds: string[] = [];
+    
+    // If farmer_id column doesn't exist, use the old approach with product fetching
+    if (columnCheckError && columnCheckError.message.includes("column 'farmer_id' does not exist")) {
+      console.log("farmer_id column not found, using product lookup approach");
+      
+      // Get all products by this farmer
+      const { data: products } = await supabase
+        .from('products')
+        .select('id')
+        .eq('user_id', farmerId);
+      
+      if (!products || products.length === 0) {
+        return [];
+      }
+      
+      const productIds = products.map(product => product.id);
+      
+      // Get order items containing these products
+      const { data: items } = await supabase
+        .from('order_items')
+        .select('order_id')
+        .in('product_id', productIds);
+        
+      if (!items || items.length === 0) {
+        return [];
+      }
+      
+      orderIds = [...new Set(items.map(item => item.order_id))];
+    } 
+    // If farmer_id column exists, use it directly
+    else {
+      const { data: items } = await supabase
+        .from('order_items')
+        .select('order_id')
+        .eq('farmer_id', farmerId);
+        
+      if (!items || items.length === 0) {
+        return [];
+      }
+      
+      orderIds = [...new Set(items.map(item => item.order_id))];
     }
-
-    const orderIds = [...new Set(orderItems.map(item => item.order_id))];
 
     // Get the orders
     const { data: ordersData, error: ordersError } = await supabase

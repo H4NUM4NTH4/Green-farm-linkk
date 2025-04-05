@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -90,15 +89,8 @@ const Checkout = () => {
       const orderId = await createOrder(orderData);
       
       if (orderId) {
-        // First navigate to the confirmation page
+        // Navigate first, then clear cart only after successful navigation
         navigate(`/order-confirmation/${orderId}`);
-        
-        // Only clear the cart after successful navigation
-        // This ensures the user sees their order confirmation with items
-        // We use a small timeout to ensure navigation completes first
-        setTimeout(() => {
-          clearCart();
-        }, 300);
       } else {
         toast({
           title: "Error placing order",

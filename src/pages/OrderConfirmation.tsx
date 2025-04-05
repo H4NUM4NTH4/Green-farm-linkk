@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -11,12 +10,14 @@ import { getOrderById } from '@/services/orderService';
 import { Order } from '@/types/product';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { useCart } from '@/contexts/CartContext';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { clearCart } = useCart();
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -26,6 +27,8 @@ const OrderConfirmation = () => {
         setLoading(true);
         const orderData = await getOrderById(orderId);
         setOrder(orderData);
+        
+        clearCart();
       } catch (error) {
         console.error('Error loading order:', error);
       } finally {
@@ -34,7 +37,7 @@ const OrderConfirmation = () => {
     };
 
     loadOrder();
-  }, [orderId]);
+  }, [orderId, clearCart]);
 
   if (loading) {
     return (
