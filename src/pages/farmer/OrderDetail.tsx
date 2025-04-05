@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -13,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, User, Phone, MapPin } from 'lucide-react';
+import { Loader2, ArrowLeft, User, Phone, MapPin, Mail, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOrderDetailsForFarmer, updateOrderStatus } from '@/services/orderService';
 import { Order, OrderStatus } from '@/types/product';
@@ -158,71 +157,80 @@ const OrderDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Customer Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Customer Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex items-start gap-2">
-                <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{order.shipping_address.fullName}</p>
-                  <p className="text-muted-foreground">{order.buyer?.email || 'No email available'}</p>
+        <Card className="border-2 border-green-100">
+          <CardHeader className="bg-green-50">
+            <CardTitle className="text-base flex items-center">
+              <User className="h-5 w-5 mr-2 text-green-600" />
+              Buyer Information
+            </CardTitle>
+            <CardDescription>
+              Complete details about the customer who placed this order
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Contact Details</h3>
+                <div className="flex items-start gap-2">
+                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{order.shipping_address.fullName}</p>
+                  </div>
+                </div>
+                {order.buyer?.email && (
+                  <div className="flex items-start gap-2">
+                    <Mail className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div>
+                      <p>{order.buyer.email}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-2">
+                  <Phone className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p>{order.shipping_address.phone}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Phone className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div>
-                  <p>{order.shipping_address.phone}</p>
+              
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Shipping Address</h3>
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p>{order.shipping_address.address}</p>
+                    <p>
+                      {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zipCode}
+                    </p>
+                    <p>{order.shipping_address.country}</p>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Shipping Address */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Shipping Address</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm">Payment Information</h3>
               <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <CreditCard className="h-4 w-4 mt-0.5 text-muted-foreground" />
                 <div>
-                  <p>{order.shipping_address.address}</p>
                   <p>
-                    {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zipCode}
+                    <span className="font-medium">Method: </span>
+                    {order.payment_method === 'credit-card' 
+                      ? 'Credit/Debit Card' 
+                      : 'Cash on Delivery'}
                   </p>
-                  <p>{order.shipping_address.country}</p>
+                  <p className="mt-1">
+                    <span className="font-medium">Total Amount: </span>
+                    <span className="text-lg font-semibold">{formatCurrency(order.total_amount)}</span>
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Payment Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Payment Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                <p className="font-medium">Payment Method</p>
-                <p>
-                  {order.payment_method === 'credit-card' 
-                    ? 'Credit/Debit Card' 
-                    : 'Cash on Delivery'}
-                </p>
-              </div>
-              <div>
-                <p className="font-medium">Total Amount</p>
-                <p className="text-xl">{formatCurrency(order.total_amount)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Order Items */}
         <Card>
           <CardHeader>
             <CardTitle>Order Items</CardTitle>

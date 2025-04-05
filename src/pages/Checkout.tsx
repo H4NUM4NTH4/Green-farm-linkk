@@ -90,10 +90,15 @@ const Checkout = () => {
       const orderId = await createOrder(orderData);
       
       if (orderId) {
-        // Only clear the cart after successful navigation to order confirmation
-        // This ensures if there are any navigation issues, the cart is preserved
-        clearCart();
+        // First navigate to the confirmation page
         navigate(`/order-confirmation/${orderId}`);
+        
+        // Only clear the cart after successful navigation
+        // This ensures the user sees their order confirmation with items
+        // We use a small timeout to ensure navigation completes first
+        setTimeout(() => {
+          clearCart();
+        }, 300);
       } else {
         toast({
           title: "Error placing order",

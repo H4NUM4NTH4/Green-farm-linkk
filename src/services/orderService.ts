@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus, ProductWithImages } from '@/types/product';
 import { fetchProductById } from './productService';
@@ -44,13 +45,35 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
 
     const orderId = orderData.id;
 
+    // Get all product information including farmer details
+    const productDetails = [];
+    for (const item of order.items) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('user_id')
+        .eq('id', item.product_id)
+        .single();
+      
+      if (product) {
+        productDetails.push({
+          product_id: item.product_id,
+          farmer_id: product.user_id
+        });
+      }
+    }
+
     // Then, insert order items
-    const orderItems = order.items.map(item => ({
-      order_id: orderId,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      price: item.price
-    }));
+    const orderItems = order.items.map(item => {
+      const productDetail = productDetails.find(p => p.product_id === item.product_id);
+      return {
+        order_id: orderId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.price,
+        // Store the farmer_id to make it easier to query orders by farmer
+        farmer_id: productDetail ? productDetail.farmer_id : null
+      };
+    });
 
     const { error: orderItemsError } = await supabase
       .from('order_items')
@@ -175,23 +198,11 @@ export const getOrdersForUser = async (userId: string): Promise<Order[]> => {
 
 export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => {
   try {
-    // First find products by the farmer
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('id')
-      .eq('user_id', farmerId);
-
-    if (productsError || !products || products.length === 0) {
-      return [];
-    }
-
-    const productIds = products.map(p => p.id);
-
-    // Find order items containing the farmer's products
+    // Use a more direct approach to find orders containing the farmer's products
     const { data: orderItems, error: orderItemsError } = await supabase
       .from('order_items')
-      .select('order_id')
-      .in('product_id', productIds);
+      .select('order_id, farmer_id')
+      .eq('farmer_id', farmerId);
 
     if (orderItemsError || !orderItems || orderItems.length === 0) {
       return [];
