@@ -75,7 +75,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       .from('orders')
       .select(`
         *,
-        buyer:profiles(id, full_name, email)
+        buyer:user_id (id, full_name, email)
       `)
       .eq('id', orderId)
       .single();
@@ -107,11 +107,11 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
             product
           });
         } else {
-          itemsWithProducts.push(item);
+          itemsWithProducts.push(item as OrderItem);
         }
       } catch (e) {
         // If we can't fetch a product, still keep the item
-        itemsWithProducts.push(item);
+        itemsWithProducts.push(item as OrderItem);
       }
     }
 
@@ -179,7 +179,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       .from('orders')
       .select(`
         *,
-        buyer:profiles(id, full_name, email)
+        buyer:user_id (id, full_name, email)
       `)
       .in('id', orderIds)
       .order('created_at', { ascending: false });
@@ -215,7 +215,7 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       .from('orders')
       .select(`
         *,
-        buyer:profiles(id, full_name, email)
+        buyer:user_id (id, full_name, email)
       `)
       .eq('id', orderId)
       .single();
@@ -245,7 +245,7 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
           product
         });
       } else {
-        itemsWithProducts.push(item);
+        itemsWithProducts.push(item as OrderItem);
       }
     }
 
