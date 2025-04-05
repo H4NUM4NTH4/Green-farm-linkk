@@ -40,10 +40,14 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Create a properly typed array before mapping to prevent excessive type instantiation
-      const typedItems = items as OrderItemBasic[];
-      // Now extract order IDs using the typed array
-      orderIds = [...new Set(typedItems.map(item => item.order_id))];
+      // Convert items to OrderItemBasic[] and then extract order_ids
+      const orderIdSet = new Set<string>();
+      for (const item of items) {
+        if (item && item.order_id) {
+          orderIdSet.add(item.order_id);
+        }
+      }
+      orderIds = Array.from(orderIdSet);
     } 
     // If farmer_id column exists, use it directly
     else {
@@ -56,10 +60,14 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Create a properly typed array before mapping to prevent excessive type instantiation
-      const typedItems = items as OrderItemBasic[];
-      // Now extract order IDs using the typed array
-      orderIds = [...new Set(typedItems.map(item => item.order_id))];
+      // Convert items to OrderItemBasic[] and then extract order_ids
+      const orderIdSet = new Set<string>();
+      for (const item of items) {
+        if (item && item.order_id) {
+          orderIdSet.add(item.order_id);
+        }
+      }
+      orderIds = Array.from(orderIdSet);
     }
 
     // Get the orders
