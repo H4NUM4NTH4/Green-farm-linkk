@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -14,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowLeft, User, Phone, MapPin, Mail, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getOrderDetailsForFarmer, updateOrderStatus } from '@/services/orderService';
+import { getOrderDetailsForFarmer, updateOrderStatus } from '@/services/orders';
 import { Order, OrderStatus } from '@/types/product';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency } from '@/lib/utils';

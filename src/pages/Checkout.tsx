@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { createOrder } from '@/services/orderService';
+import { createOrder } from '@/services/orders';
 
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name is required' }),
@@ -89,7 +89,6 @@ const Checkout = () => {
       const orderId = await createOrder(orderData);
       
       if (orderId) {
-        // Navigate first, then clear cart only after successful navigation
         navigate(`/order-confirmation/${orderId}`);
       } else {
         toast({
@@ -118,7 +117,6 @@ const Checkout = () => {
           <h1 className="heading-2 mb-8">Checkout</h1>
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Shipping and Payment Form */}
             <div className="lg:col-span-8">
               <form onSubmit={handleSubmit(onSubmit)}>
                 <Card>
@@ -232,7 +230,6 @@ const Checkout = () => {
               </form>
             </div>
             
-            {/* Order Summary */}
             <div className="lg:col-span-4">
               <Card>
                 <CardHeader>

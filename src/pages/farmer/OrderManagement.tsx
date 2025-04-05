@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Loader2, Eye, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getOrdersForFarmer } from '@/services/orderService';
+import { getOrdersForFarmer } from '@/services/orders';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Order } from '@/types/product';
 
