@@ -4,6 +4,23 @@ import { Order, OrderStatus, OrderItem } from '@/types/product';
 import { fetchProductById } from '../productService';
 import { OrderItemBasic } from './types';
 
+// Define a simpler raw type for the Supabase query result
+type RawOrderData = {
+  id: string;
+  user_id: string;
+  status: string;
+  shipping_address: any;
+  total_amount: number;
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+  buyer?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  } | null;
+};
+
 export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => {
   try {
     // First check if the farmer_id column exists in the order_items table
@@ -70,7 +87,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       orderIds = Array.from(orderIdSet);
     }
 
-    // Get the orders
+    // Get the orders with explicit typing for Supabase query result
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -86,29 +103,8 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     }
 
     // Process buyer information and cast the data to match the Order type
-    const typedOrders: Order[] = ordersData.map(order => {
-      // Handle buyer information
-      const buyerInfo = order.buyer && 
-        typeof order.buyer === 'object' && 
-        order.buyer !== null
-          ? {
-              id: (order.buyer as any)?.id || order.user_id,
-              full_name: (order.buyer as any)?.full_name || null,
-              email: (order.buyer as any)?.email || null
-            }
-          : { 
-              id: order.user_id, 
-              full_name: null, 
-              email: null 
-            };
-
-      return {
-        ...order,
-        status: order.status as OrderStatus,
-        shipping_address: order.shipping_address as Order['shipping_address'],
-        buyer: buyerInfo
-      };
-    });
+    // by using a separate mapping function instead of inline complex transformations
+    const typedOrders: Order[] = mapToTypedOrders(ordersData as RawOrderData[]);
 
     return typedOrders;
   } catch (error) {
@@ -116,6 +112,33 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     return [];
   }
 };
+
+// Helper function to map raw order data to typed Order objects
+function mapToTypedOrders(ordersData: RawOrderData[]): Order[] {
+  return ordersData.map(order => {
+    // Handle buyer information
+    const buyerInfo = order.buyer && 
+      typeof order.buyer === 'object' && 
+      order.buyer !== null
+        ? {
+            id: order.buyer.id || order.user_id,
+            full_name: order.buyer.full_name || null,
+            email: order.buyer.email || null
+          }
+        : { 
+            id: order.user_id, 
+            full_name: null, 
+            email: null 
+          };
+
+    return {
+      ...order,
+      status: order.status as OrderStatus,
+      shipping_address: order.shipping_address as Order['shipping_address'],
+      buyer: buyerInfo
+    };
+  });
+}
 
 export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string): Promise<Order | null> => {
   try {
