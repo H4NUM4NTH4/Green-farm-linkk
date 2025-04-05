@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus, ProductWithImages } from '@/types/product';
 import { fetchProductById } from './productService';
@@ -116,13 +117,17 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     }
 
     // Handle buyer information - ensure it matches the expected type
-    const buyerInfo = orderData.buyer && typeof orderData.buyer === 'object' && !orderData.buyer.error 
-      ? orderData.buyer 
-      : {
-          id: orderData.user_id,
-          full_name: null,
-          email: null
-        };
+    const buyerInfo = orderData.buyer && 
+      typeof orderData.buyer === 'object' && 
+      orderData.buyer !== null && 
+      'error' in orderData.buyer && 
+      !orderData.buyer.error 
+        ? orderData.buyer 
+        : {
+            id: orderData.user_id,
+            full_name: null,
+            email: null
+          };
 
     // Create the complete order object with proper type casting
     const order: Order = {
@@ -211,9 +216,13 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     // Process buyer information and cast the data to match the Order type
     const typedOrders: Order[] = ordersData.map(order => {
       // Handle buyer information
-      const buyerInfo = order.buyer && typeof order.buyer === 'object' && !order.buyer.error 
-        ? order.buyer 
-        : { id: order.user_id, full_name: null, email: null };
+      const buyerInfo = order.buyer && 
+        typeof order.buyer === 'object' && 
+        order.buyer !== null && 
+        'error' in order.buyer && 
+        !order.buyer.error 
+          ? order.buyer 
+          : { id: order.user_id, full_name: null, email: null };
 
       return {
         ...order,
@@ -284,9 +293,13 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
     }
 
     // Handle buyer information
-    const buyerInfo = order.buyer && typeof order.buyer === 'object' && !order.buyer.error 
-      ? order.buyer 
-      : { id: order.user_id, full_name: null, email: null };
+    const buyerInfo = order.buyer && 
+      typeof order.buyer === 'object' && 
+      order.buyer !== null && 
+      'error' in order.buyer && 
+      !order.buyer.error 
+        ? order.buyer 
+        : { id: order.user_id, full_name: null, email: null };
 
     return {
       ...order,
