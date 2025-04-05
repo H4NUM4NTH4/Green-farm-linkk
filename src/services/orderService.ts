@@ -115,12 +115,22 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       }
     }
 
+    // Handle buyer information - ensure it matches the expected type
+    const buyerInfo = orderData.buyer && typeof orderData.buyer === 'object' && !orderData.buyer.error 
+      ? orderData.buyer 
+      : {
+          id: orderData.user_id,
+          full_name: null,
+          email: null
+        };
+
     // Create the complete order object with proper type casting
     const order: Order = {
       ...orderData,
       status: orderData.status as OrderStatus,
       shipping_address: orderData.shipping_address as Order['shipping_address'],
       items: itemsWithProducts,
+      buyer: buyerInfo
     };
 
     return order;
@@ -184,7 +194,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     const orderIds = [...new Set(orderItems.map(item => item.order_id))];
 
     // Get the orders
-    const { data: orders, error: ordersError } = await supabase
+    const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select(`
         *,
@@ -198,12 +208,20 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       return [];
     }
 
-    // Cast the data to match the Order type
-    const typedOrders: Order[] = orders.map(order => ({
-      ...order,
-      status: order.status as OrderStatus,
-      shipping_address: order.shipping_address as Order['shipping_address']
-    }));
+    // Process buyer information and cast the data to match the Order type
+    const typedOrders: Order[] = ordersData.map(order => {
+      // Handle buyer information
+      const buyerInfo = order.buyer && typeof order.buyer === 'object' && !order.buyer.error 
+        ? order.buyer 
+        : { id: order.user_id, full_name: null, email: null };
+
+      return {
+        ...order,
+        status: order.status as OrderStatus,
+        shipping_address: order.shipping_address as Order['shipping_address'],
+        buyer: buyerInfo
+      };
+    });
 
     return typedOrders;
   } catch (error) {
@@ -265,11 +283,17 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       }
     }
 
+    // Handle buyer information
+    const buyerInfo = order.buyer && typeof order.buyer === 'object' && !order.buyer.error 
+      ? order.buyer 
+      : { id: order.user_id, full_name: null, email: null };
+
     return {
       ...order,
       status: order.status as OrderStatus,
       shipping_address: order.shipping_address as Order['shipping_address'],
-      items: itemsWithProducts
+      items: itemsWithProducts,
+      buyer: buyerInfo
     };
   } catch (error) {
     console.error('Error in getOrderDetailsForFarmer:', error);
