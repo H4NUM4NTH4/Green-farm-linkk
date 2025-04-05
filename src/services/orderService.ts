@@ -232,8 +232,12 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Fix: Use type assertion to avoid deep type instantiation
-      orderIds = [...new Set(items.map((item: { order_id: string }) => item.order_id))];
+      // Fix: Use explicit type for items with an interface instead of inline type assertion
+      interface OrderItemBasic {
+        order_id: string;
+      }
+      
+      orderIds = [...new Set((items as OrderItemBasic[]).map(item => item.order_id))];
     } 
     // If farmer_id column exists, use it directly
     else {
@@ -246,8 +250,12 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Fix: Use type assertion to avoid deep type instantiation
-      orderIds = [...new Set(items.map((item: { order_id: string }) => item.order_id))];
+      // Fix: Use the same interface for consistent typing
+      interface OrderItemBasic {
+        order_id: string;
+      }
+      
+      orderIds = [...new Set((items as OrderItemBasic[]).map(item => item.order_id))];
     }
 
     // Get the orders
