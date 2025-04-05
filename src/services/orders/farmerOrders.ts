@@ -41,7 +41,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       }
       
       // Create a properly typed array before mapping to prevent excessive type instantiation
-      const typedItems: OrderItemBasic[] = items;
+      const typedItems = items as OrderItemBasic[];
       // Now extract order IDs using the typed array
       orderIds = [...new Set(typedItems.map(item => item.order_id))];
     } 
@@ -57,7 +57,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       }
       
       // Create a properly typed array before mapping to prevent excessive type instantiation
-      const typedItems: OrderItemBasic[] = items;
+      const typedItems = items as OrderItemBasic[];
       // Now extract order IDs using the typed array
       orderIds = [...new Set(typedItems.map(item => item.order_id))];
     }
