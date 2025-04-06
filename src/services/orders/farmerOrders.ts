@@ -79,20 +79,18 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Extract order IDs using a simple for loop to avoid complex type inference
+      // Extract order IDs using a simple for loop
       const orderIdSet = new Set<string>();
-      if (items && items.length > 0) {
-        for (const item of items) {
-          if (item && item.order_id) {
-            orderIdSet.add(item.order_id);
-          }
+      for (const item of items) {
+        if (item && item.order_id) {
+          orderIdSet.add(item.order_id);
         }
       }
       orderIds = Array.from(orderIdSet);
     }
 
     // Get the orders with explicit typing for Supabase query result
-    const { data: ordersData, error: ordersError } = await supabase
+    const { data, error: ordersError } = await supabase
       .from('orders')
       .select(`
         *,
@@ -106,9 +104,10 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       return [];
     }
 
-    // Process buyer information and cast the data to match the Order type
-    // by using a separate mapping function instead of inline complex transformations
-    const typedOrders: Order[] = mapToTypedOrders(ordersData as unknown as RawOrderData[]);
+    // Convert the data to a known shape and then map it to the Order type
+    // using any as an intermediate step to avoid TypeScript type inference issues
+    const rawOrders = data as any[];
+    const typedOrders = rawOrders.map(order => mapOrderToTypedOrder(order));
 
     return typedOrders;
   } catch (error) {
@@ -118,30 +117,28 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
 };
 
 // Helper function to map raw order data to typed Order objects
-function mapToTypedOrders(ordersData: RawOrderData[]): Order[] {
-  return ordersData.map(order => {
-    // Handle buyer information
-    const buyerInfo = order.buyer && 
-      typeof order.buyer === 'object' && 
-      order.buyer !== null
-        ? {
-            id: order.buyer.id || order.user_id,
-            full_name: order.buyer.full_name || null,
-            email: order.buyer.email || null
-          }
-        : { 
-            id: order.user_id, 
-            full_name: null, 
-            email: null 
-          };
+function mapOrderToTypedOrder(order: any): Order {
+  // Handle buyer information
+  const buyerInfo = order.buyer && 
+    typeof order.buyer === 'object' && 
+    order.buyer !== null
+      ? {
+          id: order.buyer.id || order.user_id,
+          full_name: order.buyer.full_name || null,
+          email: order.buyer.email || null
+        }
+      : { 
+          id: order.user_id, 
+          full_name: null, 
+          email: null 
+        };
 
-    return {
-      ...order,
-      status: order.status as OrderStatus,
-      shipping_address: order.shipping_address as Order['shipping_address'],
-      buyer: buyerInfo
-    };
-  });
+  return {
+    ...order,
+    status: order.status as OrderStatus,
+    shipping_address: order.shipping_address as Order['shipping_address'],
+    buyer: buyerInfo
+  };
 }
 
 export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string): Promise<Order | null> => {
@@ -197,27 +194,14 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       }
     }
 
-    // Handle buyer information
-    const buyerInfo = order.buyer && 
-      typeof order.buyer === 'object' && 
-      order.buyer !== null
-        ? {
-            id: (order.buyer as any)?.id || order.user_id,
-            full_name: (order.buyer as any)?.full_name || null,
-            email: (order.buyer as any)?.email || null
-          }
-        : { 
-            id: order.user_id, 
-            full_name: null, 
-            email: null 
-          };
-
+    // Handle buyer information using the same mapping approach
+    const rawOrder = order as any;
+    const typedOrder = mapOrderToTypedOrder(rawOrder);
+    
+    // Add the items to the order
     return {
-      ...order,
-      status: order.status as OrderStatus,
-      shipping_address: order.shipping_address as Order['shipping_address'],
-      items: itemsWithProducts,
-      buyer: buyerInfo
+      ...typedOrder,
+      items: itemsWithProducts
     };
   } catch (error) {
     console.error('Error in getOrderDetailsForFarmer:', error);
