@@ -63,7 +63,7 @@ export async function getOrderIdsForFarmerProducts(productIds: string[]): Promis
   return Array.from(orderIdSet);
 }
 
-// Get order IDs directly using farmer_id
+// Get order IDs directly using farmer_id - using string[] return type to avoid deep instantiation
 export async function getOrderIdsForFarmerDirect(farmerId: string): Promise<string[]> {
   const { data: items } = await supabase
     .from('order_items')
