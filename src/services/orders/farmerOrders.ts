@@ -57,11 +57,13 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Convert items to OrderItemBasic[] and then extract order_ids
+      // Extract order IDs using a simple for loop to avoid complex type inference
       const orderIdSet = new Set<string>();
-      for (const item of items) {
-        if (item && item.order_id) {
-          orderIdSet.add(item.order_id);
+      if (items && items.length > 0) {
+        for (const item of items) {
+          if (item && item.order_id) {
+            orderIdSet.add(item.order_id);
+          }
         }
       }
       orderIds = Array.from(orderIdSet);
@@ -77,11 +79,13 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
         return [];
       }
       
-      // Convert items to OrderItemBasic[] and then extract order_ids
+      // Extract order IDs using a simple for loop to avoid complex type inference
       const orderIdSet = new Set<string>();
-      for (const item of items) {
-        if (item && item.order_id) {
-          orderIdSet.add(item.order_id);
+      if (items && items.length > 0) {
+        for (const item of items) {
+          if (item && item.order_id) {
+            orderIdSet.add(item.order_id);
+          }
         }
       }
       orderIds = Array.from(orderIdSet);
@@ -104,7 +108,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
 
     // Process buyer information and cast the data to match the Order type
     // by using a separate mapping function instead of inline complex transformations
-    const typedOrders: Order[] = mapToTypedOrders(ordersData as RawOrderData[]);
+    const typedOrders: Order[] = mapToTypedOrders(ordersData as unknown as RawOrderData[]);
 
     return typedOrders;
   } catch (error) {
