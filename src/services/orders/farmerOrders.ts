@@ -87,8 +87,8 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       orderIds = Array.from(orderIdSet);
     }
 
-    // Get the orders with explicit type casting to break type inference
-    const { data, error: ordersError } = await supabase
+    // Break the inference chain with explicit type annotation
+    const { data: rawData, error: ordersError } = await supabase
       .from('orders')
       .select(`
         *,
@@ -102,33 +102,35 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       return [];
     }
 
-    if (!data) {
+    if (!rawData || !Array.isArray(rawData)) {
       return [];
     }
 
-    // Process each order individually
-    const orders: Order[] = [];
-    
-    for (const rawOrder of data) {
-      // Safely cast rawOrder to any to break the type inference chain
-      const orderData = rawOrder as any;
+    // Convert raw data to properly typed Order objects
+    const orders: Order[] = rawData.map((rawOrder) => {
+      // Break type inference with intermediate type
+      const orderData = rawOrder as Record<string, any>;
       
-      const order: Order = {
-        id: orderData.id,
-        user_id: orderData.user_id,
+      return {
+        id: String(orderData.id),
+        user_id: String(orderData.user_id),
         status: orderData.status as OrderStatus,
-        total_amount: orderData.total_amount,
-        // Explicitly cast shipping_address to the expected type
+        total_amount: Number(orderData.total_amount),
         shipping_address: orderData.shipping_address as Order['shipping_address'],
-        payment_method: orderData.payment_method,
-        created_at: orderData.created_at,
-        updated_at: orderData.updated_at,
-        buyer: getBuyerInfo(orderData)
+        payment_method: String(orderData.payment_method),
+        created_at: String(orderData.created_at),
+        updated_at: String(orderData.updated_at),
+        buyer: orderData.buyer ? {
+          id: String(orderData.buyer.id || orderData.user_id),
+          full_name: orderData.buyer.full_name || null,
+          email: orderData.buyer.email || null
+        } : {
+          id: String(orderData.user_id),
+          full_name: null
+        }
       };
-      
-      orders.push(order);
-    }
-
+    });
+    
     return orders;
   } catch (error) {
     console.error('Error in getOrdersForFarmer:', error);
@@ -137,16 +139,16 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
 };
 
 // Simple helper function to extract buyer info
-function getBuyerInfo(order: any): Order['buyer'] {
+function getBuyerInfo(order: Record<string, any>): Order['buyer'] {
   if (!order.buyer || typeof order.buyer !== 'object') {
     return { 
-      id: order.user_id, 
+      id: String(order.user_id), 
       full_name: null
     };
   }
   
   return {
-    id: order.buyer.id || order.user_id,
+    id: String(order.buyer.id || order.user_id),
     full_name: order.buyer.full_name || null,
     email: order.buyer.email || null
   };
@@ -166,8 +168,8 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
 
     const productIds = products.map(p => p.id);
 
-    // Get the order basic info
-    const { data: orderData, error: orderError } = await supabase
+    // Get the order basic info with explicit typing
+    const { data: rawOrder, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
@@ -176,7 +178,7 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       .eq('id', orderId)
       .single();
 
-    if (orderError || !orderData) {
+    if (orderError || !rawOrder) {
       return null;
     }
 
@@ -204,23 +206,22 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
         itemsWithProducts.push(item as OrderItem);
       }
     }
+
+    // Break the type inference with intermediate type
+    const orderData = rawOrder as Record<string, any>;
     
-    // Cast orderData to any to break the type inference chain
-    const orderSourceData = orderData as any;
-    
-    // Create the order object directly
+    // Create the order object with explicit types
     const order: Order = {
-      id: orderSourceData.id,
-      user_id: orderSourceData.user_id,
-      status: orderSourceData.status as OrderStatus,
-      total_amount: orderSourceData.total_amount,
-      // Explicitly cast shipping_address to the expected type
-      shipping_address: orderSourceData.shipping_address as Order['shipping_address'],
-      payment_method: orderSourceData.payment_method,
-      created_at: orderSourceData.created_at,
-      updated_at: orderSourceData.updated_at,
+      id: String(orderData.id),
+      user_id: String(orderData.user_id),
+      status: orderData.status as OrderStatus,
+      total_amount: Number(orderData.total_amount),
+      shipping_address: orderData.shipping_address as Order['shipping_address'],
+      payment_method: String(orderData.payment_method),
+      created_at: String(orderData.created_at),
+      updated_at: String(orderData.updated_at),
       items: itemsWithProducts,
-      buyer: getBuyerInfo(orderSourceData)
+      buyer: getBuyerInfo(orderData)
     };
     
     return order;
