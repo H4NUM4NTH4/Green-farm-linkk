@@ -84,17 +84,20 @@ export async function getOrderIdsForFarmerDirect(farmerId: string): Promise<stri
   return Array.from(orderIdSet);
 }
 
-// Convert raw order data to typed Order object
-export function mapRawOrderToTyped(rawOrder: Record<string, any>): Order {
-  return {
+// Convert raw order data to typed Order object - simplified to avoid deep type instantiation
+export function mapRawOrderToTyped(rawOrder: any): Order {
+  // Use direct assignment to avoid TypeScript trying to deeply validate the structure
+  const order: Order = {
     id: String(rawOrder.id),
     user_id: String(rawOrder.user_id),
     status: rawOrder.status as OrderStatus,
     total_amount: Number(rawOrder.total_amount),
-    shipping_address: rawOrder.shipping_address as Order['shipping_address'],
+    shipping_address: rawOrder.shipping_address,
     payment_method: String(rawOrder.payment_method),
     created_at: String(rawOrder.created_at),
     updated_at: String(rawOrder.updated_at),
     buyer: getBuyerInfo(rawOrder)
   };
+  
+  return order;
 }
