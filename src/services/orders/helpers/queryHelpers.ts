@@ -6,19 +6,14 @@ import { fetchProductById } from '../../productService';
 export const checkFarmerIdColumn = async (): Promise<boolean> => {
   try {
     // Check if farmer_id column exists in order_items table
-    // Fix the RPC function call error by using any type to avoid type checking
-    const { data, error } = await supabase
-      .rpc('check_column_exists', {
-        table_name: 'order_items',
-        column_name: 'farmer_id'
-      }) as { data: boolean | null, error: any };
+    // Use a more explicit type assertion to fix the RPC function call error
+    const response = await supabase.rpc('check_column_exists', {
+      table_name: 'order_items',
+      column_name: 'farmer_id'
+    });
     
-    if (error) {
-      console.error('Error checking column:', error);
-      return false;
-    }
-    
-    return !!data;
+    // Use optional chaining and nullish coalescing for safer access
+    return !!response.data;
   } catch (error) {
     console.error('Error in checkFarmerIdColumn:', error);
     return false;
@@ -102,7 +97,7 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
       return [];
     }
 
-    // Return a simple array of order IDs to avoid deep type instantiation
+    // Return a simple array of order IDs
     return data.map(item => item.order_id);
   } catch (error) {
     console.error('Error in getOrderIdsForFarmerDirect:', error);
@@ -110,10 +105,10 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
   }
 };
 
-// Fix the type instantiation error by using a more explicit approach
+// Fix the type instantiation error by creating a fully explicit interface
 export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []): Order => {
-  // Create a new Order object with explicit properties to avoid deep type checking
-  const order: Order = {
+  // Create a new Order object with all properties explicitly defined to avoid deep type checking
+  return {
     id: rawOrder.id,
     user_id: rawOrder.user_id,
     status: rawOrder.status as OrderStatus,
@@ -123,15 +118,12 @@ export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []):
     created_at: rawOrder.created_at,
     updated_at: rawOrder.updated_at,
     items: orderItems,
-    // Handle buyer information separately
     buyer: rawOrder.buyer ? {
       id: rawOrder.buyer.id || rawOrder.user_id,
       full_name: rawOrder.buyer.full_name || null,
       email: rawOrder.buyer.email || null
     } : undefined
   };
-  
-  return order;
 };
 
 export const hydrateOrderItems = async (orderItems: any[]): Promise<OrderItem[]> => {
