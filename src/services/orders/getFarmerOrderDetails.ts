@@ -52,14 +52,8 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       }
     }
 
-    // Break the type inference with intermediate type
-    const orderData = rawOrder as Record<string, any>;
-    
     // Create the order object with explicit types
-    const order: Order = {
-      ...mapRawOrderToTyped(orderData),
-      items: itemsWithProducts
-    };
+    const order = mapRawOrderToTyped(rawOrder, itemsWithProducts);
     
     return order;
   } catch (error) {

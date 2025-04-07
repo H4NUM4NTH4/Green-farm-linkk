@@ -9,23 +9,6 @@ import {
   mapRawOrderToTyped
 } from './helpers/queryHelpers';
 
-// Simple type for the Supabase query result
-type RawOrderData = {
-  id: string;
-  user_id: string;
-  status: string;
-  shipping_address: any;
-  total_amount: number;
-  payment_method: string;
-  created_at: string;
-  updated_at: string;
-  buyer?: {
-    id: string;
-    full_name: string | null;
-    email: string | null;
-  } | null;
-};
-
 export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => {
   try {
     // First check if the farmer_id column exists in the order_items table
@@ -76,11 +59,7 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     }
 
     // Convert raw data to properly typed Order objects
-    const orders: Order[] = rawData.map((rawOrder) => {
-      // Break type inference with intermediate type
-      const orderData = rawOrder as Record<string, any>;
-      return mapRawOrderToTyped(orderData);
-    });
+    const orders: Order[] = rawData.map((rawOrder) => mapRawOrderToTyped(rawOrder));
     
     return orders;
   } catch (error) {

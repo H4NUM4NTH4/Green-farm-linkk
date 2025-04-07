@@ -1,6 +1,71 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus } from '@/types/product';
 import { fetchProductById } from '../../productService';
+
+export const checkFarmerIdColumn = async (): Promise<boolean> => {
+  try {
+    // Check if farmer_id column exists in order_items table
+    const { data, error } = await supabase
+      .rpc('check_column_exists', {
+        table_name: 'order_items',
+        column_name: 'farmer_id'
+      });
+    
+    if (error) {
+      console.error('Error checking column:', error);
+      return false;
+    }
+    
+    return !!data;
+  } catch (error) {
+    console.error('Error in checkFarmerIdColumn:', error);
+    return false;
+  }
+};
+
+export const getFarmerProductIds = async (farmerId: string): Promise<string[]> => {
+  try {
+    // Get all products owned by this farmer
+    const { data, error } = await supabase
+      .from('products')
+      .select('id')
+      .eq('user_id', farmerId)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching farmer products:', error);
+      return [];
+    }
+    
+    return data.map(product => product.id);
+  } catch (error) {
+    console.error('Error in getFarmerProductIds:', error);
+    return [];
+  }
+};
+
+export const getOrderIdsForFarmerProducts = async (productIds: string[]): Promise<string[]> => {
+  try {
+    // Get order items containing these products
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .in('product_id', productIds)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching order items:', error);
+      return [];
+    }
+    
+    // Extract and deduplicate order IDs
+    return [...new Set(data.map(item => item.order_id))];
+  } catch (error) {
+    console.error('Error in getOrderIdsForFarmerProducts:', error);
+    return [];
+  }
+};
 
 export const getOrderIdsForFarmer = async (farmerId: string): Promise<string[]> => {
   try {
@@ -45,14 +110,21 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
 };
 
 // Convert raw database order to typed Order object
-export const mapRawOrderToTyped = (rawOrder: any, orderItems: any[] = []): Order => {
-  // Use type assertion to avoid deep type checking
-  const order = {
-    ...rawOrder,
+// Fix type instantiation error by using a simpler approach
+export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []): Order => {
+  // Use explicit type casting to avoid deep type checking
+  const order: Order = {
+    id: rawOrder.id,
+    user_id: rawOrder.user_id,
     status: rawOrder.status as OrderStatus,
+    total_amount: rawOrder.total_amount,
     shipping_address: rawOrder.shipping_address,
-    items: orderItems as OrderItem[]
-  } as Order;
+    payment_method: rawOrder.payment_method,
+    created_at: rawOrder.created_at,
+    updated_at: rawOrder.updated_at,
+    items: orderItems,
+    buyer: rawOrder.buyer
+  };
   
   return order;
 };
