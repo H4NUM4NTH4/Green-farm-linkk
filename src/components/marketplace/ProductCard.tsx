@@ -5,6 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, ShoppingCart, Star } from 'lucide-react';
 import { ProductWithImages } from '@/types/product';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
   product: ProductWithImages;
@@ -16,10 +19,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, linkToProduct = true
   // In a real app, this would come from actual ratings
   const randomRating = Math.floor((Math.random() * 10) + 40) / 10;
   const { addToCart } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to add items to your cart",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+    
     addToCart(product, 1);
   };
   
@@ -77,7 +93,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, linkToProduct = true
           onClick={handleAddToCart}
         >
           <ShoppingCart className="h-4 w-4" />
-          Add to Cart
+          {user ? "Add to Cart" : "Sign in to Add"}
         </button>
       </CardFooter>
     </Card>
