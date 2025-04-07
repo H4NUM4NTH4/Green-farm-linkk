@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -15,6 +16,16 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { createOrder } from '@/services/orders';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { CheckCircle, ShoppingBag } from 'lucide-react';
 
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name is required' }),
@@ -34,6 +45,10 @@ const Checkout = () => {
   const { cart, clearCart } = useCart();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [orderData, setOrderData] = useState<any>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingFormSchema),
@@ -63,33 +78,43 @@ const Checkout = () => {
       return;
     }
 
+    // Prepare order data
+    const newOrderData = {
+      user_id: user.id,
+      total_amount: cart.totalPrice,
+      shipping_address: {
+        fullName: data.fullName,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zipCode,
+        country: data.country,
+        phone: data.phone
+      },
+      payment_method: data.paymentMethod,
+      items: cart.items.map(item => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+        price: item.product.price
+      }))
+    };
+
+    setOrderData(newOrderData);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!orderData) return;
+    
     try {
       setIsSubmitting(true);
+      setShowConfirmDialog(false);
       
-      const orderData = {
-        user_id: user.id,
-        total_amount: cart.totalPrice,
-        shipping_address: {
-          fullName: data.fullName,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zipCode: data.zipCode,
-          country: data.country,
-          phone: data.phone
-        },
-        payment_method: data.paymentMethod,
-        items: cart.items.map(item => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-          price: item.product.price
-        }))
-      };
-
       const orderId = await createOrder(orderData);
       
       if (orderId) {
-        navigate(`/order-confirmation/${orderId}`);
+        setCreatedOrderId(orderId);
+        setShowSuccessDialog(true);
       } else {
         toast({
           title: "Error placing order",
@@ -107,6 +132,18 @@ const Checkout = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleViewOrder = () => {
+    clearCart();
+    setShowSuccessDialog(false);
+    navigate(`/order-confirmation/${createdOrderId}`);
+  };
+
+  const handleContinueShopping = () => {
+    clearCart();
+    setShowSuccessDialog(false);
+    navigate('/marketplace');
   };
 
   return (
@@ -223,7 +260,7 @@ const Checkout = () => {
                       size="lg"
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? 'Processing...' : 'Place Order'}
+                      {isSubmitting ? 'Processing...' : 'Review Order'}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -281,6 +318,82 @@ const Checkout = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Order Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Your Order</DialogTitle>
+            <DialogDescription>
+              Please review your order details before confirming.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <h4 className="font-medium">Order Summary</h4>
+              <p className="text-sm text-muted-foreground">
+                Total items: {cart.totalItems}
+              </p>
+              <p className="text-sm font-medium">
+                Total amount: ${cart.totalPrice.toFixed(2)}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="font-medium">Shipping Details</h4>
+              {orderData && (
+                <p className="text-sm text-muted-foreground">
+                  {orderData.shipping_address.fullName}, {orderData.shipping_address.address}, {orderData.shipping_address.city}, {orderData.shipping_address.state} {orderData.shipping_address.zipCode}
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="font-medium">Payment Method</h4>
+              <p className="text-sm text-muted-foreground">
+                {orderData && orderData.payment_method === 'credit-card' ? 'Credit/Debit Card' : 'Cash on Delivery'}
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Back to Checkout
+            </Button>
+            <Button 
+              onClick={handleConfirmOrder} 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Processing...' : 'Confirm Order'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order Success Dialog */}
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-16 w-16 text-green-500" />
+            </div>
+            <AlertDialogTitle className="text-center">Order Placed Successfully!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              Thank you for your order. We've received your order and will begin processing it right away.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-3">
+            <AlertDialogCancel onClick={handleContinueShopping} className="w-full sm:w-auto">
+              <ShoppingBag className="mr-2 h-4 w-4" />
+              Continue Shopping
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleViewOrder} className="w-full sm:w-auto">
+              View Order Details
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

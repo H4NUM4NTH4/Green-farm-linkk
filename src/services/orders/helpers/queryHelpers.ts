@@ -1,104 +1,81 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderStatus } from '@/types/product';
+import { Order, OrderItem, OrderStatus } from '@/types/product';
+import { fetchProductById } from '../../productService';
 
-// Helper function to extract buyer info from raw order data
-export function getBuyerInfo(order: Record<string, any>): Order['buyer'] {
-  if (!order.buyer || typeof order.buyer !== 'object') {
-    return { 
-      id: String(order.user_id), 
-      full_name: null
-    };
-  }
-  
-  return {
-    id: String(order.buyer.id || order.user_id),
-    full_name: order.buyer.full_name || null,
-    email: order.buyer.email || null
-  };
-}
+export const getOrderIdsForFarmer = async (farmerId: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .eq('farmer_id', farmerId)
+      .order('created_at', { ascending: false });
 
-// Get farmer product IDs for queries
-export async function getFarmerProductIds(farmerId: string): Promise<string[]> {
-  const { data: products } = await supabase
-    .from('products')
-    .select('id')
-    .eq('user_id', farmerId);
-    
-  if (!products || products.length === 0) {
-    return [];
-  }
-  
-  return products.map(product => product.id);
-}
-
-// Check if farmer_id column exists in order_items
-export async function checkFarmerIdColumn(): Promise<boolean> {
-  const { error: columnCheckError } = await supabase
-    .from('order_items')
-    .select('farmer_id')
-    .limit(1);
-  
-  return !(columnCheckError && columnCheckError.message.includes("column 'farmer_id' does not exist"));
-}
-
-// Get order IDs associated with a farmer's products
-export async function getOrderIdsForFarmerProducts(productIds: string[]): Promise<string[]> {
-  const { data: items } = await supabase
-    .from('order_items')
-    .select('order_id')
-    .in('product_id', productIds);
-    
-  if (!items || items.length === 0) {
-    return [];
-  }
-  
-  // Extract order IDs using a simple for loop
-  const orderIdSet = new Set<string>();
-  for (const item of items) {
-    if (item && item.order_id) {
-      orderIdSet.add(item.order_id);
+    if (error) {
+      console.error('Error fetching orders for farmer:', error);
+      return [];
     }
-  }
-  return Array.from(orderIdSet);
-}
 
-// Get order IDs directly using farmer_id - using string[] return type to avoid deep instantiation
-export async function getOrderIdsForFarmerDirect(farmerId: string): Promise<string[]> {
-  const { data: items } = await supabase
-    .from('order_items')
-    .select('order_id')
-    .eq('farmer_id', farmerId);
-    
-  if (!items || items.length === 0) {
+    // Extract and deduplicate order IDs
+    return [...new Set(data.map(item => item.order_id))];
+  } catch (error) {
+    console.error('Error in getOrderIdsForFarmer:', error);
     return [];
   }
-  
-  // Extract order IDs using a simple for loop
-  const orderIdSet = new Set<string>();
-  for (const item of items) {
-    if (item && item.order_id) {
-      orderIdSet.add(item.order_id);
-    }
-  }
-  return Array.from(orderIdSet);
-}
+};
 
-// Using a more aggressive simplification to avoid deep type instantiation
-export const mapRawOrderToTyped = (rawOrder: any): Order => {
-  // Create a basic order structure with explicit type assignments
+export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .eq('farmer_id', farmerId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching orders for farmer:', error);
+      return [];
+    }
+
+    // Return a simple array of order IDs to avoid deep type instantiation
+    return data.map(item => item.order_id);
+  } catch (error) {
+    console.error('Error in getOrderIdsForFarmerDirect:', error);
+    return [];
+  }
+};
+
+// Convert raw database order to typed Order object
+export const mapRawOrderToTyped = (rawOrder: any, orderItems: any[] = []): Order => {
+  // Use type assertion to avoid deep type checking
   const order = {
-    id: String(rawOrder.id),
-    user_id: String(rawOrder.user_id),
+    ...rawOrder,
     status: rawOrder.status as OrderStatus,
-    total_amount: Number(rawOrder.total_amount),
     shipping_address: rawOrder.shipping_address,
-    payment_method: String(rawOrder.payment_method),
-    created_at: String(rawOrder.created_at),
-    updated_at: String(rawOrder.updated_at),
-    buyer: getBuyerInfo(rawOrder)
-  };
+    items: orderItems as OrderItem[]
+  } as Order;
   
-  // Use type assertion to skip deep validation
-  return order as Order;
-}
+  return order;
+};
+
+export const hydrateOrderItems = async (orderItems: any[]): Promise<OrderItem[]> => {
+  const hydratedItems: OrderItem[] = [];
+  
+  for (const item of orderItems) {
+    try {
+      const product = await fetchProductById(item.product_id);
+      if (product) {
+        hydratedItems.push({
+          ...item,
+          product
+        });
+      } else {
+        hydratedItems.push(item as OrderItem);
+      }
+    } catch (error) {
+      console.error(`Error hydrating order item ${item.id}:`, error);
+      hydratedItems.push(item as OrderItem);
+    }
+  }
+  
+  return hydratedItems;
+};
