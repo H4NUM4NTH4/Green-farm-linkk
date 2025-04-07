@@ -6,11 +6,12 @@ import { fetchProductById } from '../../productService';
 export const checkFarmerIdColumn = async (): Promise<boolean> => {
   try {
     // Check if farmer_id column exists in order_items table
+    // Fix the RPC function call error by using any type to avoid type checking
     const { data, error } = await supabase
       .rpc('check_column_exists', {
         table_name: 'order_items',
         column_name: 'farmer_id'
-      });
+      }) as { data: boolean | null, error: any };
     
     if (error) {
       console.error('Error checking column:', error);
@@ -109,10 +110,9 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
   }
 };
 
-// Convert raw database order to typed Order object
-// Fix type instantiation error by using a simpler approach
+// Fix the type instantiation error by using a more explicit approach
 export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []): Order => {
-  // Use explicit type casting to avoid deep type checking
+  // Create a new Order object with explicit properties to avoid deep type checking
   const order: Order = {
     id: rawOrder.id,
     user_id: rawOrder.user_id,
@@ -123,7 +123,12 @@ export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []):
     created_at: rawOrder.created_at,
     updated_at: rawOrder.updated_at,
     items: orderItems,
-    buyer: rawOrder.buyer
+    // Handle buyer information separately
+    buyer: rawOrder.buyer ? {
+      id: rawOrder.buyer.id || rawOrder.user_id,
+      full_name: rawOrder.buyer.full_name || null,
+      email: rawOrder.buyer.email || null
+    } : undefined
   };
   
   return order;
