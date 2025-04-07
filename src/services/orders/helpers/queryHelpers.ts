@@ -5,15 +5,24 @@ import { fetchProductById } from '../../productService';
 
 export const checkFarmerIdColumn = async (): Promise<boolean> => {
   try {
-    // Check if farmer_id column exists in order_items table
-    // Use a more explicit type assertion to fix the RPC function call error
-    const response = await supabase.rpc('check_column_exists', {
-      table_name: 'order_items',
-      column_name: 'farmer_id'
-    });
+    // Instead of using RPC which is causing type errors, 
+    // directly check for the column using a simpler query
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('farmer_id')
+      .limit(1);
     
-    // Use optional chaining and nullish coalescing for safer access
-    return !!response.data;
+    if (error) {
+      // If the error message contains "column" and "does not exist", the column doesn't exist
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        return false;
+      }
+      console.error('Error checking column:', error);
+      return false;
+    }
+    
+    // If we got here, the column exists
+    return true;
   } catch (error) {
     console.error('Error in checkFarmerIdColumn:', error);
     return false;
@@ -105,10 +114,10 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
   }
 };
 
-// Fix the type instantiation error by creating a fully explicit interface
+// Fix the type instantiation error by explicitly defining the structure
 export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []): Order => {
-  // Create a new Order object with all properties explicitly defined to avoid deep type checking
-  return {
+  // Create a simple order object without complex nesting
+  const order: Order = {
     id: rawOrder.id,
     user_id: rawOrder.user_id,
     status: rawOrder.status as OrderStatus,
@@ -118,12 +127,19 @@ export const mapRawOrderToTyped = (rawOrder: any, orderItems: OrderItem[] = []):
     created_at: rawOrder.created_at,
     updated_at: rawOrder.updated_at,
     items: orderItems,
-    buyer: rawOrder.buyer ? {
+    buyer: undefined
+  };
+  
+  // Add buyer separately if it exists
+  if (rawOrder.buyer) {
+    order.buyer = {
       id: rawOrder.buyer.id || rawOrder.user_id,
       full_name: rawOrder.buyer.full_name || null,
       email: rawOrder.buyer.email || null
-    } : undefined
-  };
+    };
+  }
+  
+  return order;
 };
 
 export const hydrateOrderItems = async (orderItems: any[]): Promise<OrderItem[]> => {

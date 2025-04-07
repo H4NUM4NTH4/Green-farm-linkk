@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -25,7 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CheckCircle, ShoppingBag } from 'lucide-react';
+import { CheckCircle, ShoppingBag, AlertCircle } from 'lucide-react';
 
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name is required' }),
@@ -78,7 +77,6 @@ const Checkout = () => {
       return;
     }
 
-    // Prepare order data
     const newOrderData = {
       user_id: user.id,
       total_amount: cart.totalPrice,
@@ -115,18 +113,19 @@ const Checkout = () => {
       if (orderId) {
         setCreatedOrderId(orderId);
         setShowSuccessDialog(true);
-      } else {
         toast({
-          title: "Error placing order",
-          description: "There was a problem creating your order",
-          variant: "destructive",
+          title: "Order placed successfully",
+          description: "Your order has been created",
         });
+      } else {
+        console.error("Failed to create order");
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error("Checkout error:", error);
       toast({
         title: "Error placing order",
-        description: "There was a problem creating your order",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -319,7 +318,6 @@ const Checkout = () => {
       </main>
       <Footer />
 
-      {/* Order Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
@@ -371,7 +369,6 @@ const Checkout = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Order Success Dialog */}
       <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

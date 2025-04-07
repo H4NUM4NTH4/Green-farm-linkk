@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { CreateOrderInput } from './types';
+import { toast } from '@/components/ui/use-toast';
 
 export const createOrder = async (order: CreateOrderInput): Promise<string | null> => {
   try {
@@ -17,8 +18,23 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
       .select('id')
       .single();
 
-    if (orderError || !orderData) {
+    if (orderError) {
       console.error('Error creating order:', orderError);
+      toast({
+        title: "Error placing order",
+        description: orderError.message || "There was a problem creating your order",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    if (!orderData) {
+      console.error('No order data returned');
+      toast({
+        title: "Error placing order",
+        description: "No order data was returned",
+        variant: "destructive",
+      });
       return null;
     }
 
@@ -27,11 +43,16 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
     // Get all product information including farmer details
     const productDetails = [];
     for (const item of order.items) {
-      const { data: product } = await supabase
+      const { data: product, error: productError } = await supabase
         .from('products')
         .select('user_id')
         .eq('id', item.product_id)
         .single();
+      
+      if (productError) {
+        console.error('Error fetching product details:', productError);
+        continue;
+      }
       
       if (product) {
         productDetails.push({
@@ -60,12 +81,23 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
 
     if (orderItemsError) {
       console.error('Error creating order items:', orderItemsError);
+      toast({
+        title: "Error with order items",
+        description: orderItemsError.message || "There was a problem adding items to your order",
+        variant: "destructive",
+      });
       return null;
     }
 
     return orderId;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error in createOrder:', error);
+    toast({
+      title: "Error placing order",
+      description: errorMessage,
+      variant: "destructive",
+    });
     return null;
   }
 };
