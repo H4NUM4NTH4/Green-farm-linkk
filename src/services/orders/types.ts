@@ -33,17 +33,9 @@ export type { OrderStatus, OrderItem };
 export interface RawOrder {
   id: string;
   user_id: string;
-  status: OrderStatus; 
+  status: string; // Changed from OrderStatus to string since it comes from DB as string
   total_amount: number;
-  shipping_address: {
-    fullName: string;
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-    phone: string;
-  };
+  shipping_address: any; // Using any to accommodate JSON type from database
   payment_method: string;
   created_at: string;
   updated_at: string;
@@ -55,7 +47,7 @@ export interface RawOrder {
   };
 }
 
-// Define OrderWithItems for fully populated order data
+// Define OrderWithItems which extends Order from product.ts
 export interface OrderWithItems extends Order {
   items: OrderItem[];
 }

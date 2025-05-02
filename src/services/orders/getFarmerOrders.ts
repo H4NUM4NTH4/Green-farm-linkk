@@ -81,24 +81,32 @@ export const getFarmerOrders = async (
     // Map raw orders to typed orders
     return orders.map((order) => {
       // Handle shipping_address parsing if needed
-      let typedOrder;
       try {
-        typedOrder = mapRawOrderToTyped(order as RawOrder);
-        return typedOrder;
+        // Use a two-step cast to avoid TypeScript error
+        const rawOrder = order as unknown as RawOrder;
+        return mapRawOrderToTyped(rawOrder);
       } catch (e) {
         console.error('Error mapping order:', e);
         // Return a default order with minimal information if parsing fails
         return {
           id: order.id,
-          userId: order.user_id,
+          user_id: order.user_id,
+          userId: order.user_id, // Include both for compatibility
           status: order.status as OrderStatus,
-          totalAmount: order.total_amount,
-          shippingAddress: typeof order.shipping_address === 'string'
+          total_amount: order.total_amount,
+          totalAmount: order.total_amount, // Include both for compatibility
+          shipping_address: typeof order.shipping_address === 'string'
             ? JSON.parse(order.shipping_address)
             : order.shipping_address,
-          paymentMethod: order.payment_method,
-          createdAt: order.created_at,
-          updatedAt: order.updated_at,
+          shippingAddress: typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address, // Include both for compatibility
+          payment_method: order.payment_method,
+          paymentMethod: order.payment_method, // Include both for compatibility
+          created_at: order.created_at,
+          createdAt: order.created_at, // Include both for compatibility
+          updated_at: order.updated_at,
+          updatedAt: order.updated_at, // Include both for compatibility
           items: []
         } as OrderWithItems;
       }

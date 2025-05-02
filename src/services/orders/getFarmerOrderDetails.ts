@@ -72,7 +72,9 @@ export const getFarmerOrderDetails = async (
     
     // Convert the raw database objects to our typed models
     try {
-      return mapRawOrderToTyped(fullOrder as RawOrder);
+      // Use a two-step cast to avoid TypeScript error
+      const rawOrder = fullOrder as unknown as RawOrder;
+      return mapRawOrderToTyped(rawOrder);
     } catch (e) {
       console.error('Error mapping order to typed model:', e);
       return null;
