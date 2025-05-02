@@ -7,19 +7,19 @@ import { Order, OrderItem } from '@/types/product';
 // Function to check if the farmer_id column exists in the order_items table
 export const checkFarmerIdColumn = async (): Promise<boolean> => {
   try {
-    // Use a direct query instead of RPC to check if the column exists
+    // Use a simpler approach to check if the column exists
     const { data, error } = await supabase
-      .from('information_schema.columns')
-      .select('column_name')
-      .eq('table_name', 'order_items')
-      .eq('column_name', 'farmer_id');
+      .rpc('check_column_exists', {
+        p_table_name: 'order_items',
+        p_column_name: 'farmer_id'
+      });
 
     if (error) {
       console.error('Error checking if farmer_id column exists:', error);
       return false;
     }
 
-    return data && data.length > 0;
+    return Boolean(data);
   } catch (error) {
     console.error('Error in checkFarmerIdColumn:', error);
     return false;
@@ -78,6 +78,13 @@ export const getOrderIdsForFarmerProducts = async (productIds: string[]): Promis
  */
 export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<string[]> => {
   try {
+    // Use a safer approach by checking if the column exists first
+    const columnExists = await checkFarmerIdColumn();
+    if (!columnExists) {
+      console.error('farmer_id column does not exist');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('order_items')
       .select('order_id')

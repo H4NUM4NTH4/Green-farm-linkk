@@ -27,7 +27,7 @@ export interface OrderItemBasic {
 }
 
 // Export the OrderStatus type for reuse
-export { OrderStatus };
+export type { OrderStatus };
 
 // Define RawOrder type for database responses
 export interface RawOrder {
