@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { OrderStatus, OrderWithItems } from '@/types/product';
+import { OrderStatus } from '@/types/product';
+import { OrderWithItems, RawOrder } from './types';
 import { getOrderIdsForFarmerDirect, mapRawOrderToTyped } from './helpers/queryHelpers';
 
 export type OrderListFilters = {
@@ -82,7 +83,7 @@ export const getFarmerOrders = async (
       // Handle shipping_address parsing if needed
       let typedOrder;
       try {
-        typedOrder = mapRawOrderToTyped(order);
+        typedOrder = mapRawOrderToTyped(order as RawOrder);
         return typedOrder;
       } catch (e) {
         console.error('Error mapping order:', e);
@@ -107,3 +108,6 @@ export const getFarmerOrders = async (
     return [];
   }
 };
+
+// Export the function with the name expected by farmerOrders.ts
+export const getOrdersForFarmer = getFarmerOrders;

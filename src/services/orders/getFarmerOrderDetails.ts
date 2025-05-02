@@ -1,14 +1,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { OrderWithItems } from '@/types/product';
+import { OrderWithItems, RawOrder } from './types';
 import { getOrderIdsForFarmerDirect, mapRawOrderToTyped } from './helpers/queryHelpers';
 
 /**
  * Get detailed information about a specific order for a farmer
  */
 export const getFarmerOrderDetails = async (
-  farmerId: string,
-  orderId: string
+  orderId: string,
+  farmerId: string
 ): Promise<OrderWithItems | null> => {
   try {
     // First verify this is an order that belongs to the farmer
@@ -72,7 +72,7 @@ export const getFarmerOrderDetails = async (
     
     // Convert the raw database objects to our typed models
     try {
-      return mapRawOrderToTyped(fullOrder);
+      return mapRawOrderToTyped(fullOrder as RawOrder);
     } catch (e) {
       console.error('Error mapping order to typed model:', e);
       return null;
@@ -82,3 +82,6 @@ export const getFarmerOrderDetails = async (
     return null;
   }
 };
+
+// Export the function with the name expected by farmerOrders.ts
+export const getOrderDetailsForFarmer = getFarmerOrderDetails;

@@ -5,18 +5,20 @@ import { OrderWithItems, RawOrder, OrderItem } from '../types';
 
 export const checkColumnExists = async (table: string, column: string): Promise<boolean> => {
   try {
-    // Use stored procedure instead of direct query to information_schema
-    const { data, error } = await supabase.rpc('check_column_exists', {
-      table_name: table,
-      column_name: column
-    });
+    // Using direct query instead of RPC call which was causing errors
+    const { data, error } = await supabase
+      .from('pg_catalog.pg_attribute')
+      .select('*')
+      .eq('attrelid', `${table}::regclass`)
+      .eq('attname', column)
+      .single();
 
     if (error) {
       console.error('Error checking if column exists:', error);
       return false;
     }
 
-    return data || false;
+    return !!data;
   } catch (error) {
     console.error('Exception when checking if column exists:', error);
     return false;
@@ -29,7 +31,7 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
     const { data: farmerProducts, error: productsError } = await supabase
       .from('products')
       .select('id')
-      .eq('farmer_id', farmerId);
+      .eq('user_id', farmerId);
 
     if (productsError || !farmerProducts) {
       console.error('Error getting farmer products:', productsError);
@@ -62,7 +64,7 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
   }
 };
 
-export const mapRawOrderToTyped = (rawOrder: any): OrderWithItems => {
+export const mapRawOrderToTyped = (rawOrder: RawOrder): OrderWithItems => {
   // Parse shipping_address if it's a string
   let shippingAddress = rawOrder.shipping_address;
   
@@ -99,7 +101,7 @@ export const mapRawOrderToTyped = (rawOrder: any): OrderWithItems => {
   return {
     id: rawOrder.id,
     userId: rawOrder.user_id,
-    status: rawOrder.status as any, 
+    status: rawOrder.status, 
     totalAmount: rawOrder.total_amount,
     shippingAddress: shippingAddress as any,
     paymentMethod: rawOrder.payment_method,
@@ -111,5 +113,5 @@ export const mapRawOrderToTyped = (rawOrder: any): OrderWithItems => {
       email: rawOrder.buyer.email
     } : undefined,
     items: orderItems
-  };
+  } as OrderWithItems;
 };
