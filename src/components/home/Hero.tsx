@@ -10,12 +10,11 @@ const Hero = () => {
       <div className="agri-container">
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-agri-primary tracking-tight mb-6">
-            Connecting local farmers directly with health-conscious buyers
+            Connect, Trade, Grow Smarter Farming
           </h1>
           
           <p className="text-lg text-muted-foreground mb-10 max-w-lg">
-            Connect with local farmers directly and get fresh produce delivered to your doorstep.
-            Experience farm-to-table quality with AI-driven insights.
+            AgriConnect brings farmers and buyers together through AI-driven insights, predictive pricing, and seamless marketplace designed for the future of agriculture
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">

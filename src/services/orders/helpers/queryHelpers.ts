@@ -1,7 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { ProductWithImages } from '@/types/product';
-import { OrderWithItems, RawOrder, OrderItem } from '../types';
+import { RawOrder, OrderWithItems, OrderStatus } from '../types';
 
 export const checkColumnExists = async (table: string, column: string): Promise<boolean> => {
   try {
@@ -55,6 +53,7 @@ export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<stri
   }
 };
 
+// Function to map raw order data to our typed model
 export const mapRawOrderToTyped = (rawOrder: RawOrder): OrderWithItems => {
   // Parse shipping_address if it's a string
   let shippingAddress = rawOrder.shipping_address;
