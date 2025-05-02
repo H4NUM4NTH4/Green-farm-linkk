@@ -2,25 +2,97 @@
 import { supabase } from '@/integrations/supabase/client';
 import { OrderStatus, OrderWithItems, RawOrder } from '../types';
 import { User } from '@supabase/supabase-js';
+import { Order, OrderItem } from '@/types/product';
 
 // Function to check if the farmer_id column exists in the order_items table
 export const checkFarmerIdColumn = async (): Promise<boolean> => {
   try {
-    // Use a type assertion here to avoid the type checking error
-    const { data, error } = await supabase.rpc('check_column_exists' as any, {
-      p_table_name: 'order_items',
-      p_column_name: 'farmer_id'
-    });
+    // Use a direct query instead of RPC to check if the column exists
+    const { data, error } = await supabase
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_name', 'order_items')
+      .eq('column_name', 'farmer_id');
 
     if (error) {
       console.error('Error checking if farmer_id column exists:', error);
       return false;
     }
 
-    return data || false;
+    return data && data.length > 0;
   } catch (error) {
     console.error('Error in checkFarmerIdColumn:', error);
     return false;
+  }
+};
+
+/**
+ * Helper to get all product IDs owned by a farmer
+ */
+export const getFarmerProductIds = async (farmerId: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id')
+      .eq('user_id', farmerId);
+
+    if (error) {
+      console.error('Error getting farmer products:', error);
+      return [];
+    }
+
+    return data ? data.map(product => product.id) : [];
+  } catch (error) {
+    console.error('Error in getFarmerProductIds:', error);
+    return [];
+  }
+};
+
+/**
+ * Helper to get order IDs for a farmer using the product IDs
+ */
+export const getOrderIdsForFarmerProducts = async (productIds: string[]): Promise<string[]> => {
+  try {
+    if (productIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .in('product_id', productIds);
+
+    if (error) {
+      console.error('Error getting order IDs for products:', error);
+      return [];
+    }
+
+    const uniqueOrderIds = [...new Set(data?.map(item => item.order_id))];
+    return uniqueOrderIds;
+  } catch (error) {
+    console.error('Error in getOrderIdsForFarmerProducts:', error);
+    return [];
+  }
+};
+
+/**
+ * Helper to get order IDs for a farmer directly using the farmer_id column
+ */
+export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .eq('farmer_id', farmerId);
+
+    if (error) {
+      console.error('Error getting order IDs for farmer directly:', error);
+      return [];
+    }
+
+    const uniqueOrderIds = [...new Set(data?.map(item => item.order_id))];
+    return uniqueOrderIds;
+  } catch (error) {
+    console.error('Error in getOrderIdsForFarmerDirect:', error);
+    return [];
   }
 };
 

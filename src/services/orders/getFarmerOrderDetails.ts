@@ -52,8 +52,11 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       }
     }
 
-    // Create the order object with explicit types
-    const order = mapRawOrderToTyped(rawOrder, itemsWithProducts);
+    // Create the order object with proper typing
+    const order = mapRawOrderToTyped({
+      ...rawOrder,
+      order_items: itemsWithProducts
+    });
     
     return order;
   } catch (error) {
