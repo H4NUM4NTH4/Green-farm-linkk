@@ -33,7 +33,7 @@ export type { OrderStatus };
 export interface RawOrder {
   id: string;
   user_id: string;
-  status: OrderStatus;
+  status: OrderStatus; // Using OrderStatus type instead of string
   total_amount: number;
   shipping_address: {
     fullName: string;

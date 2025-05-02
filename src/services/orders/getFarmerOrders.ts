@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Order } from '@/types/product';
+import { Order, OrderStatus } from '@/types/product';
 import { 
   checkFarmerIdColumn,
   getOrderIdsForFarmerDirect,
@@ -8,6 +8,7 @@ import {
   getOrderIdsForFarmerProducts,
   mapRawOrderToTyped
 } from './helpers/queryHelpers';
+import { RawOrder } from './types';
 
 export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => {
   try {
@@ -20,15 +21,8 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     if (!farmerIdColumnExists) {
       console.log("farmer_id column not found, using product lookup approach");
       
-      // Get all products by this farmer
-      const productIds = await getFarmerProductIds(farmerId);
-      
-      if (productIds.length === 0) {
-        return [];
-      }
-      
-      // Get order items containing these products
-      orderIds = await getOrderIdsForFarmerProducts(productIds);
+      // Get order IDs using product lookup approach
+      orderIds = await getOrderIdsForFarmerProducts(farmerId);
     } 
     // If farmer_id column exists, use it directly
     else {
@@ -59,7 +53,10 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     }
 
     // Convert raw data to properly typed Order objects
-    const orders: Order[] = rawData.map((rawOrder) => mapRawOrderToTyped(rawOrder));
+    const orders: Order[] = rawData.map((rawOrder) => mapRawOrderToTyped({
+      ...rawOrder,
+      status: rawOrder.status as OrderStatus // Ensure status is cast to OrderStatus
+    }));
     
     return orders;
   } catch (error) {

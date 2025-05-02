@@ -1,8 +1,9 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderItem } from '@/types/product';
+import { Order, OrderItem, OrderStatus } from '@/types/product';
 import { fetchProductById } from '../productService';
 import { getFarmerProductIds, mapRawOrderToTyped } from './helpers/queryHelpers';
+import { RawOrder } from './types';
 
 export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string): Promise<Order | null> => {
   try {
@@ -48,15 +49,20 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
           product
         });
       } else {
-        itemsWithProducts.push(item as OrderItem);
+        // Ensure the item has all required properties including order_id
+        itemsWithProducts.push({
+          ...item,
+          order_id: orderId // Make sure order_id is present
+        } as OrderItem);
       }
     }
 
     // Create the order object with proper typing
     const order = mapRawOrderToTyped({
       ...rawOrder,
+      status: rawOrder.status as OrderStatus, // Ensure status is cast to OrderStatus
       order_items: itemsWithProducts
-    });
+    } as RawOrder);
     
     return order;
   } catch (error) {
