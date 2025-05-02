@@ -10,7 +10,7 @@ const Hero = () => {
       <div className="agri-container">
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-agri-primary tracking-tight mb-6">
-            Shop healthy fruit and vegetables like never before
+            Connecting local farmers directly with health-conscious buyers
           </h1>
           
           <p className="text-lg text-muted-foreground mb-10 max-w-lg">
