@@ -27,13 +27,13 @@ export interface OrderItemBasic {
 }
 
 // Export the OrderStatus type for reuse
-export type { OrderStatus };
+export type { OrderStatus, OrderItem };
 
 // Define RawOrder type for database responses
 export interface RawOrder {
   id: string;
   user_id: string;
-  status: OrderStatus; // Using OrderStatus type instead of string
+  status: OrderStatus; 
   total_amount: number;
   shipping_address: {
     fullName: string;

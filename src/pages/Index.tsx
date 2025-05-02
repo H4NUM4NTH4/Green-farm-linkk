@@ -52,14 +52,14 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       <main className="flex-grow">
         <Hero />
-        <div className="agri-container">
-          <section className="py-16">
+        <div className="agri-container py-12">
+          <section className="py-10">
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-2xl md:text-3xl font-bold">AI Recommended Products</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-agri-primary">AI Recommended Products</h2>
               <a href="/marketplace" className="text-agri-primary font-medium hover:underline">
                 View all products →
               </a>
@@ -73,9 +73,9 @@ const Index = () => {
           
           <Separator className="my-6" />
 
-          <section className="py-12">
+          <section className="py-10">
             <div className="mb-2 flex items-center">
-              <h2 className="text-2xl md:text-3xl font-bold">Recently Added</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-agri-primary">Recently Added</h2>
               <div className="ml-3 px-2 py-1 bg-agri-peach/20 text-xs rounded-md text-agri-primary font-medium">New</div>
             </div>
             <p className="text-muted-foreground mb-8">Browse the latest products from our farmers</p>

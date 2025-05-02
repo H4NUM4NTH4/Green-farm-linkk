@@ -1,66 +1,109 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderStatus } from '@/types/product';
-import { 
-  checkFarmerIdColumn,
-  getOrderIdsForFarmerDirect,
-  getFarmerProductIds,
-  getOrderIdsForFarmerProducts,
-  mapRawOrderToTyped
-} from './helpers/queryHelpers';
-import { RawOrder } from './types';
+import { OrderStatus, OrderWithItems } from '@/types/product';
+import { getOrderIdsForFarmerDirect, mapRawOrderToTyped } from './helpers/queryHelpers';
 
-export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => {
+export type OrderListFilters = {
+  status?: OrderStatus;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+};
+
+/**
+ * Retrieves all orders containing products from a specific farmer
+ */
+export const getFarmerOrders = async (
+  farmerId: string,
+  filters: OrderListFilters = {}
+): Promise<OrderWithItems[]> => {
   try {
-    // First check if the farmer_id column exists in the order_items table
-    const farmerIdColumnExists = await checkFarmerIdColumn();
-    
-    let orderIds: string[] = [];
-    
-    // If farmer_id column doesn't exist, use the old approach with product fetching
-    if (!farmerIdColumnExists) {
-      console.log("farmer_id column not found, using product lookup approach");
-      
-      // Get order IDs using product lookup approach
-      orderIds = await getOrderIdsForFarmerProducts(farmerId);
-    } 
-    // If farmer_id column exists, use it directly
-    else {
-      orderIds = await getOrderIdsForFarmerDirect(farmerId);
-    }
+    const {
+      status,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10
+    } = filters;
 
+    // Get all order IDs that contain products from this farmer
+    const orderIds = await getOrderIdsForFarmerDirect(farmerId);
+    
     if (orderIds.length === 0) {
       return [];
     }
 
-    // Break the inference chain with explicit type annotation
-    const { data: rawData, error: ordersError } = await supabase
+    // Use the orderIds to fetch order details
+    let query = supabase
       .from('orders')
       .select(`
         *,
-        buyer:user_id (id, full_name, email)
+        buyer:user_id (
+          id,
+          full_name,
+          email
+        )
       `)
-      .in('id', orderIds)
-      .order('created_at', { ascending: false });
+      .in('id', orderIds);
 
-    if (ordersError) {
-      console.error('Error fetching farmer orders:', ordersError);
+    // Apply status filter if provided
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    // Apply date range filters if provided
+    if (startDate) {
+      query = query.gte('created_at', startDate.toISOString());
+    }
+
+    if (endDate) {
+      query = query.lte('created_at', endDate.toISOString());
+    }
+
+    // Apply pagination
+    const from = (page - 1) * limit;
+    query = query.range(from, from + limit - 1);
+
+    // Execute the query
+    const { data: orders, error } = await query;
+
+    if (error) {
+      console.error('Error fetching farmer orders:', error);
       return [];
     }
 
-    if (!rawData || !Array.isArray(rawData)) {
+    if (!orders || orders.length === 0) {
       return [];
     }
 
-    // Convert raw data to properly typed Order objects
-    const orders: Order[] = rawData.map((rawOrder) => mapRawOrderToTyped({
-      ...rawOrder,
-      status: rawOrder.status as OrderStatus // Ensure status is cast to OrderStatus
-    }));
-    
-    return orders;
+    // Map raw orders to typed orders
+    return orders.map((order) => {
+      // Handle shipping_address parsing if needed
+      let typedOrder;
+      try {
+        typedOrder = mapRawOrderToTyped(order);
+        return typedOrder;
+      } catch (e) {
+        console.error('Error mapping order:', e);
+        // Return a default order with minimal information if parsing fails
+        return {
+          id: order.id,
+          userId: order.user_id,
+          status: order.status as OrderStatus,
+          totalAmount: order.total_amount,
+          shippingAddress: typeof order.shipping_address === 'string'
+            ? JSON.parse(order.shipping_address)
+            : order.shipping_address,
+          paymentMethod: order.payment_method,
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
+          items: []
+        } as OrderWithItems;
+      }
+    });
   } catch (error) {
-    console.error('Error in getOrdersForFarmer:', error);
+    console.error('Exception in getFarmerOrders:', error);
     return [];
   }
 };

@@ -1,72 +1,84 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderItem, OrderStatus } from '@/types/product';
-import { fetchProductById } from '../productService';
-import { getFarmerProductIds, mapRawOrderToTyped } from './helpers/queryHelpers';
-import { RawOrder } from './types';
+import { OrderWithItems } from '@/types/product';
+import { getOrderIdsForFarmerDirect, mapRawOrderToTyped } from './helpers/queryHelpers';
 
-export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string): Promise<Order | null> => {
+/**
+ * Get detailed information about a specific order for a farmer
+ */
+export const getFarmerOrderDetails = async (
+  farmerId: string,
+  orderId: string
+): Promise<OrderWithItems | null> => {
   try {
-    // First, validate this order belongs to the farmer
-    const productIds = await getFarmerProductIds(farmerId);
-
-    if (productIds.length === 0) {
+    // First verify this is an order that belongs to the farmer
+    const orderIds = await getOrderIdsForFarmerDirect(farmerId);
+    
+    if (!orderIds.includes(orderId)) {
+      console.log(`Order ${orderId} does not belong to farmer ${farmerId}`);
       return null;
     }
-
-    // Get the order basic info with explicit typing
-    const { data: rawOrder, error: orderError } = await supabase
+    
+    // Fetch the order with buyer information
+    const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
-        buyer:user_id (id, full_name, email)
+        buyer:user_id (
+          id,
+          full_name,
+          email
+        )
       `)
       .eq('id', orderId)
       .single();
-
-    if (orderError || !rawOrder) {
+    
+    if (orderError || !order) {
+      console.error('Error fetching order details:', orderError);
       return null;
     }
-
-    // Get order items belonging to this farmer
-    const { data: orderItems, error: orderItemsError } = await supabase
+    
+    // Fetch order items with product details
+    const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
-      .select('*')
-      .eq('order_id', orderId)
-      .in('product_id', productIds);
-
-    if (orderItemsError) {
+      .select(`
+        *,
+        product:product_id (
+          *,
+          images:product_images (*)
+        )
+      `)
+      .eq('order_id', orderId);
+    
+    if (itemsError) {
+      console.error('Error fetching order items:', itemsError);
       return null;
     }
-
-    // Fetch product details for each order item
-    const itemsWithProducts: OrderItem[] = [];
-    for (const item of orderItems || []) {
-      const product = await fetchProductById(item.product_id);
-      if (product) {
-        itemsWithProducts.push({
-          ...item,
-          product
-        });
-      } else {
-        // Ensure the item has all required properties including order_id
-        itemsWithProducts.push({
-          ...item,
-          order_id: orderId // Make sure order_id is present
-        } as OrderItem);
+    
+    // Combine order with its items
+    const fullOrder = {
+      ...order,
+      order_items: orderItems || []
+    };
+    
+    // Parse the shipping address if it's a string
+    if (typeof fullOrder.shipping_address === 'string') {
+      try {
+        fullOrder.shipping_address = JSON.parse(fullOrder.shipping_address);
+      } catch (e) {
+        console.error('Error parsing shipping address:', e);
       }
     }
-
-    // Create the order object with proper typing
-    const order = mapRawOrderToTyped({
-      ...rawOrder,
-      status: rawOrder.status as OrderStatus, // Ensure status is cast to OrderStatus
-      order_items: itemsWithProducts
-    } as RawOrder);
     
-    return order;
+    // Convert the raw database objects to our typed models
+    try {
+      return mapRawOrderToTyped(fullOrder);
+    } catch (e) {
+      console.error('Error mapping order to typed model:', e);
+      return null;
+    }
   } catch (error) {
-    console.error('Error in getOrderDetailsForFarmer:', error);
+    console.error('Exception in getFarmerOrderDetails:', error);
     return null;
   }
 };

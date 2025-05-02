@@ -1,124 +1,115 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { ProductWithImages } from '@/types/product';
-import { OrderItem, OrderStatus, OrderWithItems, RawOrder } from '../types';
+import { OrderWithItems, RawOrder, OrderItem } from '../types';
 
-// Function to check if the farmer_id column exists in the order_items table
-export const checkFarmerIdColumn = async (): Promise<boolean> => {
+export const checkColumnExists = async (table: string, column: string): Promise<boolean> => {
   try {
-    // Use a direct RPC function call instead of querying information schema
-    const { data, error } = await supabase.rpc('get_user_role');
+    // Use stored procedure instead of direct query to information_schema
+    const { data, error } = await supabase.rpc('check_column_exists', {
+      table_name: table,
+      column_name: column
+    });
 
-    // This is just a placeholder to make the type system happy
-    // In a real implementation, we'd create a specific RPC function
-    console.log("RPC call data:", data);
-    
-    // For now, let's assume the column exists
-    return true;
+    if (error) {
+      console.error('Error checking if column exists:', error);
+      return false;
+    }
+
+    return data || false;
   } catch (error) {
-    console.error('Error in checkFarmerIdColumn:', error);
+    console.error('Exception when checking if column exists:', error);
     return false;
   }
 };
 
-/**
- * Gets product IDs owned by a specific farmer
- */
-export const getFarmerProductIds = async (farmerId: string): Promise<string[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('id')
-      .eq('seller_id', farmerId);
-
-    if (error) {
-      console.error('Error fetching farmer product IDs:', error);
-      return [];
-    }
-
-    return data.map(item => item.id);
-  } catch (error) {
-    console.error('Error in getFarmerProductIds:', error);
-    return [];
-  }
-};
-
-/**
- * Maps raw orders from the database to typed orders
- */
-export const mapRawOrderToTyped = (rawOrder: RawOrder): OrderWithItems => {
-  const items = rawOrder.order_items?.map(item => ({
-    id: item.id,
-    order_id: rawOrder.id, // Add the missing order_id property
-    product_id: item.product_id,
-    quantity: item.quantity,
-    price: item.price,
-    product: item.product as ProductWithImages,
-    created_at: item.created_at
-  })) || [];
-
-  return {
-    id: rawOrder.id,
-    user_id: rawOrder.user_id,
-    status: rawOrder.status as OrderStatus, // Cast to ensure type safety
-    total_amount: rawOrder.total_amount,
-    shipping_address: rawOrder.shipping_address,
-    payment_method: rawOrder.payment_method,
-    created_at: rawOrder.created_at,
-    updated_at: rawOrder.updated_at,
-    buyer: rawOrder.buyer,
-    items: items
-  };
-};
-
-/**
- * Get order IDs for orders that directly have the farmer ID
- */
 export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<string[]> => {
   try {
-    const { data, error } = await supabase
-      .from('order_items')
-      .select('order_id')
+    // Get all product IDs for the farmer
+    const { data: farmerProducts, error: productsError } = await supabase
+      .from('products')
+      .select('id')
       .eq('farmer_id', farmerId);
 
-    if (error) {
-      console.error('Error fetching direct farmer order IDs:', error);
+    if (productsError || !farmerProducts) {
+      console.error('Error getting farmer products:', productsError);
       return [];
     }
 
-    return [...new Set(data.map(item => item.order_id))];
-  } catch (error) {
-    console.error('Error in getOrderIdsForFarmerDirect:', error);
-    return [];
-  }
-};
-
-/**
- * Get order IDs for orders that contain products from a specific farmer
- */
-export const getOrderIdsForFarmerProducts = async (farmerId: string): Promise<string[]> => {
-  try {
-    // Get product IDs owned by this farmer
-    const productIds = await getFarmerProductIds(farmerId);
-    
-    if (productIds.length === 0) {
+    if (farmerProducts.length === 0) {
       return [];
     }
 
-    // Now get orders that include these products
-    const { data, error } = await supabase
+    const productIds = farmerProducts.map(product => product.id);
+
+    // Get all order items containing those products
+    const { data: orderItems, error: orderItemsError } = await supabase
       .from('order_items')
       .select('order_id')
       .in('product_id', productIds);
 
-    if (error) {
-      console.error('Error fetching order IDs for farmer products:', error);
+    if (orderItemsError || !orderItems) {
+      console.error('Error getting order items:', orderItemsError);
       return [];
     }
 
-    return [...new Set(data.map(item => item.order_id))];
+    // Get unique order IDs
+    const uniqueOrderIds = [...new Set(orderItems.map(item => item.order_id))];
+    return uniqueOrderIds;
   } catch (error) {
-    console.error('Error in getOrderIdsForFarmerProducts:', error);
+    console.error('Exception in getOrderIdsForFarmerDirect:', error);
     return [];
   }
+};
+
+export const mapRawOrderToTyped = (rawOrder: any): OrderWithItems => {
+  // Parse shipping_address if it's a string
+  let shippingAddress = rawOrder.shipping_address;
+  
+  if (typeof shippingAddress === 'string') {
+    try {
+      shippingAddress = JSON.parse(shippingAddress);
+    } catch (e) {
+      console.error('Error parsing shipping_address:', e);
+      shippingAddress = {
+        fullName: 'Error parsing address',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: '',
+        phone: '',
+      };
+    }
+  }
+  
+  // Make sure order items have the correct structure
+  const orderItems: OrderItem[] = Array.isArray(rawOrder.order_items) 
+    ? rawOrder.order_items.map((item: any) => ({
+        id: item.id,
+        order_id: rawOrder.id, // Ensure order_id is included
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.price,
+        product: item.product as ProductWithImages,
+        created_at: item.created_at
+      }))
+    : [];
+
+  return {
+    id: rawOrder.id,
+    userId: rawOrder.user_id,
+    status: rawOrder.status as any, 
+    totalAmount: rawOrder.total_amount,
+    shippingAddress: shippingAddress as any,
+    paymentMethod: rawOrder.payment_method,
+    createdAt: rawOrder.created_at,
+    updatedAt: rawOrder.updated_at,
+    buyer: rawOrder.buyer ? {
+      id: rawOrder.buyer.id,
+      fullName: rawOrder.buyer.full_name || 'Unknown User',
+      email: rawOrder.buyer.email
+    } : undefined,
+    items: orderItems
+  };
 };
