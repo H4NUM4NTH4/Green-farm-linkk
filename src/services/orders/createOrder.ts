@@ -7,19 +7,14 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
   try {
     console.log('Creating order with data:', order);
     
-    // First, insert the order using a simplified structure
-    // to avoid potential RLS policy recursion
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: order.user_id,
-        total_amount: order.total_amount,
-        shipping_address: order.shipping_address,
-        payment_method: order.payment_method,
-        status: 'pending'
-      })
-      .select('id')
-      .single();
+    // Use a more direct and simplified approach to avoid RLS recursion issues
+    // We'll first create an order with minimal data
+    const { data: orderData, error: orderError } = await supabase.rpc('create_order', {
+      p_user_id: order.user_id,
+      p_total_amount: order.total_amount,
+      p_shipping_address: order.shipping_address,
+      p_payment_method: order.payment_method
+    });
 
     if (orderError) {
       console.error('Error creating order:', orderError);
@@ -41,15 +36,13 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
       return null;
     }
 
-    const orderId = orderData.id;
+    console.log('Order created with ID:', orderData);
+    const orderId = orderData;
 
-    // Process each item separately to avoid complex queries that might trigger RLS recursion
-    const orderItems = [];
-    
-    // Get all product information including farmer details
+    // Process each order item individually to avoid complex queries
     for (const item of order.items) {
       try {
-        // Get product details in a separate query
+        // Get product details to get the farmer_id
         const { data: product, error: productError } = await supabase
           .from('products')
           .select('user_id')
@@ -61,34 +54,20 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
           continue;
         }
         
-        // Add the item to our order items array
-        orderItems.push({
-          order_id: orderId,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.price,
-          // Store the farmer_id to make it easier to query orders by farmer
-          farmer_id: product ? product.user_id : null
+        // Add the order item using a direct RPC call
+        const { error: itemError } = await supabase.rpc('add_order_item', {
+          p_order_id: orderId,
+          p_product_id: item.product_id,
+          p_quantity: item.quantity,
+          p_price: item.price,
+          p_farmer_id: product ? product.user_id : null
         });
+
+        if (itemError) {
+          console.error('Error adding order item:', itemError, 'for product:', item.product_id);
+        }
       } catch (error) {
         console.error(`Error processing item ${item.product_id}:`, error);
-      }
-    }
-
-    // Insert all order items in a single batch
-    if (orderItems.length > 0) {
-      const { error: orderItemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (orderItemsError) {
-        console.error('Error creating order items:', orderItemsError);
-        toast({
-          title: "Error with order items",
-          description: orderItemsError.message || "There was a problem adding items to your order",
-          variant: "destructive",
-        });
-        return null;
       }
     }
 
