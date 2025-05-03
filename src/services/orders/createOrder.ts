@@ -5,7 +5,10 @@ import { toast } from '@/components/ui/use-toast';
 
 export const createOrder = async (order: CreateOrderInput): Promise<string | null> => {
   try {
-    // First, insert the order
+    console.log('Creating order with data:', order);
+    
+    // First, insert the order using a simplified structure
+    // to avoid potential RLS policy recursion
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -40,55 +43,56 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
 
     const orderId = orderData.id;
 
+    // Process each item separately to avoid complex queries that might trigger RLS recursion
+    const orderItems = [];
+    
     // Get all product information including farmer details
-    const productDetails = [];
     for (const item of order.items) {
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .select('user_id')
-        .eq('id', item.product_id)
-        .single();
-      
-      if (productError) {
-        console.error('Error fetching product details:', productError);
-        continue;
-      }
-      
-      if (product) {
-        productDetails.push({
+      try {
+        // Get product details in a separate query
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('user_id')
+          .eq('id', item.product_id)
+          .single();
+        
+        if (productError) {
+          console.error('Error fetching product details:', productError);
+          continue;
+        }
+        
+        // Add the item to our order items array
+        orderItems.push({
+          order_id: orderId,
           product_id: item.product_id,
-          farmer_id: product.user_id
+          quantity: item.quantity,
+          price: item.price,
+          // Store the farmer_id to make it easier to query orders by farmer
+          farmer_id: product ? product.user_id : null
         });
+      } catch (error) {
+        console.error(`Error processing item ${item.product_id}:`, error);
       }
     }
 
-    // Then, insert order items
-    const orderItems = order.items.map(item => {
-      const productDetail = productDetails.find(p => p.product_id === item.product_id);
-      return {
-        order_id: orderId,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.price,
-        // Store the farmer_id to make it easier to query orders by farmer
-        farmer_id: productDetail ? productDetail.farmer_id : null
-      };
-    });
+    // Insert all order items in a single batch
+    if (orderItems.length > 0) {
+      const { error: orderItemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
 
-    const { error: orderItemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (orderItemsError) {
-      console.error('Error creating order items:', orderItemsError);
-      toast({
-        title: "Error with order items",
-        description: orderItemsError.message || "There was a problem adding items to your order",
-        variant: "destructive",
-      });
-      return null;
+      if (orderItemsError) {
+        console.error('Error creating order items:', orderItemsError);
+        toast({
+          title: "Error with order items",
+          description: orderItemsError.message || "There was a problem adding items to your order",
+          variant: "destructive",
+        });
+        return null;
+      }
     }
 
+    console.log('Order created successfully with ID:', orderId);
     return orderId;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
