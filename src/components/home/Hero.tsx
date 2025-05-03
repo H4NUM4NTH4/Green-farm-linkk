@@ -8,13 +8,14 @@ const Hero = () => {
   return (
     <div className="py-16 bg-white">
       <div className="agri-container">
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+        <div className="flex flex-col items-start text-left max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-agri-primary tracking-tight mb-6">
-            Connect, Trade, Grow Smarter Farming
+            Connect, Trade, Grow<br />
+            <span className="text-agri-primary">Smarter Farming</span>
           </h1>
           
           <p className="text-lg text-muted-foreground mb-10 max-w-lg">
-            AgriConnect brings farmers and buyers together through AI-driven insights, predictive pricing, and seamless marketplace designed for the future of agriculture
+            AgriConnect brings farmers and buyers together through AI-driven insights, predictive pricing, and a seamless marketplace designed for the future of agriculture.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4">

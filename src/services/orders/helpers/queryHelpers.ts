@@ -1,5 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { RawOrder, OrderWithItems, OrderStatus } from '../types';
+import { ProductWithImages } from '@/types/product';
 
 export const checkColumnExists = async (table: string, column: string): Promise<boolean> => {
   try {
@@ -76,7 +78,7 @@ export const mapRawOrderToTyped = (rawOrder: RawOrder): OrderWithItems => {
   }
   
   // Make sure order items have the correct structure
-  const orderItems: OrderItem[] = Array.isArray(rawOrder.order_items) 
+  const orderItems = Array.isArray(rawOrder.order_items) 
     ? rawOrder.order_items.map((item: any) => ({
         id: item.id,
         order_id: rawOrder.id, // Ensure order_id is included
