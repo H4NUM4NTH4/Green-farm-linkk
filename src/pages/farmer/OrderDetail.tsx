@@ -116,15 +116,17 @@ const OrderDetail = () => {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink as={Link} to="/farmer/dashboard">
-                <Home className="h-3 w-3 mr-1" />
-                Home
+              <BreadcrumbLink asChild>
+                <Link to="/farmer/dashboard">
+                  <Home className="h-3 w-3 mr-1" />
+                  Home
+                </Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink as={Link} to="/farmer/orders">
-                Orders
+              <BreadcrumbLink asChild>
+                <Link to="/farmer/orders">Orders</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -183,8 +185,8 @@ const OrderDetail = () => {
           </CardHeader>
         </Card>
 
+        {/* Order Info */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Order Info */}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Order Items</CardTitle>
