@@ -8,13 +8,16 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
     console.log('Creating order with data:', order);
     
     // Use a more direct and simplified approach to avoid RLS recursion issues
-    // We'll first create an order with minimal data
-    const { data: orderData, error: orderError } = await supabase.rpc('create_order', {
-      p_user_id: order.user_id,
-      p_total_amount: order.total_amount,
-      p_shipping_address: order.shipping_address,
-      p_payment_method: order.payment_method
-    });
+    // We'll first create an order with minimal data using a POST request to the RPC function
+    const { data: orderData, error: orderError } = await supabase.rpc(
+      'create_order' as any,
+      {
+        p_user_id: order.user_id,
+        p_total_amount: order.total_amount,
+        p_shipping_address: order.shipping_address,
+        p_payment_method: order.payment_method
+      }
+    );
 
     if (orderError) {
       console.error('Error creating order:', orderError);
@@ -55,13 +58,16 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
         }
         
         // Add the order item using a direct RPC call
-        const { error: itemError } = await supabase.rpc('add_order_item', {
-          p_order_id: orderId,
-          p_product_id: item.product_id,
-          p_quantity: item.quantity,
-          p_price: item.price,
-          p_farmer_id: product ? product.user_id : null
-        });
+        const { error: itemError } = await supabase.rpc(
+          'add_order_item' as any,
+          {
+            p_order_id: orderId,
+            p_product_id: item.product_id,
+            p_quantity: item.quantity,
+            p_price: item.price,
+            p_farmer_id: product ? product.user_id : null
+          }
+        );
 
         if (itemError) {
           console.error('Error adding order item:', itemError, 'for product:', item.product_id);
