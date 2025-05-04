@@ -5,6 +5,7 @@ import { getOrderIdsForFarmerDirect, mapRawOrderToTyped } from './helpers/queryH
 
 /**
  * Get detailed information about a specific order for a farmer
+ * Ensures the order belongs to the specified farmer
  */
 export const getFarmerOrderDetails = async (
   orderId: string,
@@ -48,7 +49,8 @@ export const getFarmerOrderDetails = async (
           images:product_images (*)
         )
       `)
-      .eq('order_id', orderId);
+      .eq('order_id', orderId)
+      .eq('farmer_id', farmerId); // Ensure we only get items belonging to this farmer
     
     if (itemsError) {
       console.error('Error fetching order items:', itemsError);

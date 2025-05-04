@@ -56,7 +56,7 @@ const OrderActionButtons: React.FC<OrderActionButtonsProps> = ({
   // Render different button sets based on current status
   if (currentStatus === 'pending') {
     return (
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button 
           variant="default" 
           size="sm" 

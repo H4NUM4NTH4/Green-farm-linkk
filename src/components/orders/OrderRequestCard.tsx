@@ -22,6 +22,18 @@ const OrderRequestCard: React.FC<OrderRequestCardProps> = ({
   const [currentStatus, setCurrentStatus] = useState<OrderStatus>(order.status);
   const [showShippingModal, setShowShippingModal] = useState(false);
 
+  // Find the first item's product image, if any
+  const firstProductImage = order.items && order.items.length > 0 && 
+    order.items[0].product?.images && 
+    order.items[0].product.images.length > 0 ? 
+    order.items[0].product.images[0].url || order.items[0].product.images[0].image_path : 
+    undefined;
+
+  // Get the first product name, if any
+  const firstProductName = order.items && order.items.length > 0 ? 
+    order.items[0].product?.name || 'Unknown Product' : 
+    'Unknown Product';
+
   const handleStatusUpdate = (newStatus: OrderStatus) => {
     setCurrentStatus(newStatus);
     if (onStatusUpdate) {
@@ -45,6 +57,22 @@ const OrderRequestCard: React.FC<OrderRequestCardProps> = ({
               </div>
               <OrderStatusBadge status={currentStatus} />
             </div>
+            
+            {firstProductImage && (
+              <div className="mb-3">
+                <div className="h-32 w-full bg-gray-100 rounded overflow-hidden">
+                  <img 
+                    src={firstProductImage} 
+                    alt={firstProductName} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="mt-2 font-medium">{firstProductName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {order.items && order.items.length > 1 ? `+${order.items.length - 1} more items` : ''}
+                </p>
+              </div>
+            )}
             
             <div className="text-sm space-y-1 mb-4">
               <p>
