@@ -1,8 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus } from '@/types/product';
-import { RawOrder } from './types';
+import { RawOrder, BuyerData, BuyerError } from './types';
 import { fetchProductById } from '../productService';
+
+// Type guard to check if the buyer object is of type BuyerData
+function isBuyerData(buyer: BuyerData | BuyerError | undefined): buyer is BuyerData {
+  return buyer !== undefined && 'id' in buyer && !('error' in buyer);
+}
 
 /**
  * Fetches all orders that contain products uploaded by a specific farmer
@@ -54,13 +59,18 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
     // Format and return the orders - use type assertion after validation
     return orders.map(order => {
       // Handle buyer data that might have an error
-      const buyer = 'error' in order.buyer 
-        ? undefined 
-        : {
-            id: order.buyer.id,
-            full_name: order.buyer.full_name,
-            email: order.buyer.email
+      let buyer: { id: string; full_name: string | null; email?: string } | undefined = undefined;
+      
+      if (order.buyer && typeof order.buyer === 'object') {
+        if (isBuyerData(order.buyer as any)) {
+          const buyerData = order.buyer as BuyerData;
+          buyer = {
+            id: buyerData.id,
+            full_name: buyerData.full_name,
+            email: buyerData.email
           };
+        }
+      }
 
       // Parse shipping_address if it's a string
       let shippingAddress = order.shipping_address;
@@ -127,13 +137,18 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
     }
 
     // Handle buyer data that might have an error
-    const buyer = 'error' in order.buyer 
-      ? undefined 
-      : {
-          id: order.buyer.id,
-          full_name: order.buyer.full_name,
-          email: order.buyer.email
+    let buyer: { id: string; full_name: string | null; email?: string } | undefined = undefined;
+      
+    if (order.buyer && typeof order.buyer === 'object') {
+      if (isBuyerData(order.buyer as any)) {
+        const buyerData = order.buyer as BuyerData;
+        buyer = {
+          id: buyerData.id,
+          full_name: buyerData.full_name,
+          email: buyerData.email
         };
+      }
+    }
 
     // Parse shipping_address if it's a string
     let shippingAddress = order.shipping_address;

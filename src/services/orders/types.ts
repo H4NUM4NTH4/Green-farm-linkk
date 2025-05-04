@@ -29,6 +29,18 @@ export interface OrderItemBasic {
 // Export the OrderStatus type for reuse
 export type { OrderStatus, OrderItem };
 
+// Define BuyerData type to represent possible shapes
+export type BuyerData = {
+  id: string;
+  full_name: string | null;
+  email?: string;
+};
+
+// Define BuyerError type
+export type BuyerError = {
+  error: boolean;
+};
+
 // Define RawOrder type for database responses
 export interface RawOrder {
   id: string;
@@ -40,13 +52,7 @@ export interface RawOrder {
   created_at: string;
   updated_at: string;
   order_items?: any[];
-  buyer?: {
-    id: string;
-    full_name: string | null;
-    email?: string;
-  } | {
-    error: boolean; // Add error property to handle potential errors with buyer data
-  };
+  buyer?: BuyerData | BuyerError;
 }
 
 // Define OrderWithItems which extends Order from product.ts
