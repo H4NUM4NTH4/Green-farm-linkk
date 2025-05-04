@@ -12,6 +12,7 @@ export type Database = {
       order_items: {
         Row: {
           created_at: string
+          farmer_id: string | null
           id: string
           order_id: string
           price: number
@@ -20,6 +21,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          farmer_id?: string | null
           id?: string
           order_id: string
           price: number
@@ -28,6 +30,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          farmer_id?: string | null
           id?: string
           order_id?: string
           price?: number
@@ -189,6 +192,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_order_item: {
+        Args: {
+          p_order_id: string
+          p_product_id: string
+          p_quantity: number
+          p_price: number
+          p_farmer_id: string
+        }
+        Returns: undefined
+      }
+      create_order: {
+        Args: {
+          p_user_id: string
+          p_total_amount: number
+          p_shipping_address: Json
+          p_payment_method: string
+        }
+        Returns: string
+      }
       get_current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string

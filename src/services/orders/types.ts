@@ -51,3 +51,14 @@ export interface RawOrder {
 export interface OrderWithItems extends Order {
   items: OrderItem[];
 }
+
+// Define the expected RPC function types to help TypeScript understand our custom functions
+declare module '@supabase/supabase-js' {
+  interface SupabaseClient {
+    rpc<T = any>(
+      fn: 'get_current_user_id' | 'get_user_role' | 'create_order' | 'add_order_item',
+      params?: object,
+      options?: object
+    ): { data: T; error: Error | null };
+  }
+}
