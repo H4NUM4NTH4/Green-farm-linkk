@@ -47,18 +47,43 @@ export const getOrdersForFarmer = async (farmerId: string): Promise<Order[]> => 
       return [];
     }
 
-    // Format and return the orders
-    return (orders as RawOrder[]).map(order => ({
-      id: order.id,
-      user_id: order.user_id,
-      status: order.status as OrderStatus,
-      total_amount: order.total_amount,
-      shipping_address: order.shipping_address,
-      payment_method: order.payment_method,
-      created_at: order.created_at,
-      updated_at: order.updated_at,
-      buyer: order.buyer
-    }));
+    if (!orders || orders.length === 0) {
+      return [];
+    }
+
+    // Format and return the orders - use type assertion after validation
+    return orders.map(order => {
+      // Handle buyer data that might have an error
+      const buyer = 'error' in order.buyer 
+        ? undefined 
+        : {
+            id: order.buyer.id,
+            full_name: order.buyer.full_name,
+            email: order.buyer.email
+          };
+
+      // Parse shipping_address if it's a string
+      let shippingAddress = order.shipping_address;
+      if (typeof shippingAddress === 'string') {
+        try {
+          shippingAddress = JSON.parse(shippingAddress);
+        } catch (e) {
+          console.error('Error parsing shipping address:', e);
+        }
+      }
+
+      return {
+        id: order.id,
+        user_id: order.user_id,
+        status: order.status as OrderStatus,
+        total_amount: order.total_amount,
+        shipping_address: shippingAddress as any, // Cast to any to resolve type mismatch
+        payment_method: order.payment_method,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        buyer: buyer
+      };
+    });
   } catch (error) {
     console.error('Exception in getOrdersForFarmer:', error);
     return [];
@@ -101,6 +126,25 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       return null;
     }
 
+    // Handle buyer data that might have an error
+    const buyer = 'error' in order.buyer 
+      ? undefined 
+      : {
+          id: order.buyer.id,
+          full_name: order.buyer.full_name,
+          email: order.buyer.email
+        };
+
+    // Parse shipping_address if it's a string
+    let shippingAddress = order.shipping_address;
+    if (typeof shippingAddress === 'string') {
+      try {
+        shippingAddress = JSON.parse(shippingAddress);
+      } catch (e) {
+        console.error('Error parsing shipping address:', e);
+      }
+    }
+
     // Process order items with product details
     const itemsWithProducts: OrderItem[] = await Promise.all(
       orderItems.map(async (item): Promise<OrderItem> => {
@@ -129,11 +173,11 @@ export const getOrderDetailsForFarmer = async (orderId: string, farmerId: string
       user_id: order.user_id,
       status: order.status as OrderStatus,
       total_amount: order.total_amount,
-      shipping_address: order.shipping_address,
+      shipping_address: shippingAddress as any, // Cast to any to resolve type mismatch
       payment_method: order.payment_method,
       created_at: order.created_at,
       updated_at: order.updated_at,
-      buyer: order.buyer,
+      buyer: buyer,
       items: itemsWithProducts
     };
   } catch (error) {

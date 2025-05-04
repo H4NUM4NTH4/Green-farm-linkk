@@ -44,6 +44,8 @@ export interface RawOrder {
     id: string;
     full_name: string | null;
     email?: string;
+  } | {
+    error: boolean; // Add error property to handle potential errors with buyer data
   };
 }
 
