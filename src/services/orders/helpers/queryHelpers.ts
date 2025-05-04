@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderItem, OrderStatus } from '@/types/product';
 import { OrderWithItems, RawOrder, BuyerData, BuyerError } from '../types';
@@ -15,26 +14,31 @@ function isBuyerData(buyer: BuyerData | BuyerError | undefined): buyer is BuyerD
  */
 export const getOrderIdsForFarmerDirect = async (farmerId: string): Promise<string[]> => {
   try {
-    // Get all order items where the farmer is the current user
-    const { data: orderItems, error } = await supabase
+    console.log(`Getting order IDs for farmer: ${farmerId}`);
+    
+    // Query order_items directly to get order IDs where farmer_id matches
+    const { data, error } = await supabase
       .from('order_items')
       .select('order_id')
       .eq('farmer_id', farmerId);
-
+    
     if (error) {
-      console.error('Error fetching order IDs for farmer:', error);
+      console.error('Error getting order IDs for farmer:', error);
       return [];
     }
-
-    if (!orderItems || orderItems.length === 0) {
+    
+    if (!data || data.length === 0) {
+      console.log(`No orders found for farmer: ${farmerId}`);
       return [];
     }
-
+    
     // Extract unique order IDs
-    const uniqueOrderIds = [...new Set(orderItems.map(item => item.order_id))];
-    return uniqueOrderIds;
+    const orderIds = [...new Set(data.map(item => item.order_id))];
+    console.log(`Found ${orderIds.length} unique order IDs for farmer ${farmerId}:`, orderIds);
+    
+    return orderIds;
   } catch (error) {
-    console.error('Exception in getOrderIdsForFarmerDirect:', error);
+    console.error('Error in getOrderIdsForFarmerDirect:', error);
     return [];
   }
 };

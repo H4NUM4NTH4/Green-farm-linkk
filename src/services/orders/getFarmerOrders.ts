@@ -20,6 +20,8 @@ export const getFarmerOrders = async (
   filters: OrderListFilters = {}
 ): Promise<OrderWithItems[]> => {
   try {
+    console.log(`Getting orders for farmer: ${farmerId} with filters:`, filters);
+    
     const {
       status,
       startDate,
@@ -32,8 +34,11 @@ export const getFarmerOrders = async (
     const orderIds = await getOrderIdsForFarmerDirect(farmerId);
     
     if (orderIds.length === 0) {
+      console.log(`No order IDs found for farmer: ${farmerId}`);
       return [];
     }
+
+    console.log(`Found ${orderIds.length} order IDs for farmer ${farmerId}:`, orderIds);
 
     // Use the orderIds to fetch order details
     let query = supabase
@@ -75,42 +80,64 @@ export const getFarmerOrders = async (
     }
 
     if (!orders || orders.length === 0) {
+      console.log(`No orders found for farmer: ${farmerId}`);
       return [];
     }
 
-    // Map raw orders to typed orders
-    return orders.map((order) => {
-      // Handle shipping_address parsing if needed
+    console.log(`Found ${orders.length} orders for farmer ${farmerId}`);
+
+    // For each order, fetch the order items that belong to this farmer
+    const ordersWithItems = await Promise.all(orders.map(async (order) => {
       try {
-        // Use a two-step cast to avoid TypeScript error
-        const rawOrder = order as unknown as RawOrder;
-        return mapRawOrderToTyped(rawOrder);
+        // Fetch order items for this order that belong to this farmer
+        const { data: items, error: itemsError } = await supabase
+          .from('order_items')
+          .select(`
+            *,
+            product:product_id (
+              *,
+              images:product_images (*)
+            )
+          `)
+          .eq('order_id', order.id)
+          .eq('farmer_id', farmerId);
+        
+        if (itemsError) {
+          console.error(`Error fetching items for order ${order.id}:`, itemsError);
+          return null;
+        }
+        
+        // Add items to order
+        const orderWithItems = {
+          ...order,
+          order_items: items || []
+        };
+        
+        // Parse shipping address if needed
+        if (typeof orderWithItems.shipping_address === 'string') {
+          try {
+            orderWithItems.shipping_address = JSON.parse(orderWithItems.shipping_address);
+          } catch (e) {
+            console.error('Error parsing shipping address:', e);
+          }
+        }
+        
+        // Map to typed order
+        try {
+          const rawOrder = orderWithItems as unknown as RawOrder;
+          return mapRawOrderToTyped(rawOrder);
+        } catch (e) {
+          console.error('Error mapping order to typed model:', e);
+          return null;
+        }
       } catch (e) {
-        console.error('Error mapping order:', e);
-        // Return a default order with minimal information if parsing fails
-        return {
-          id: order.id,
-          user_id: order.user_id,
-          userId: order.user_id, // Include both for compatibility
-          status: order.status as OrderStatus,
-          total_amount: order.total_amount,
-          totalAmount: order.total_amount, // Include both for compatibility
-          shipping_address: typeof order.shipping_address === 'string'
-            ? JSON.parse(order.shipping_address)
-            : order.shipping_address,
-          shippingAddress: typeof order.shipping_address === 'string'
-            ? JSON.parse(order.shipping_address)
-            : order.shipping_address, // Include both for compatibility
-          payment_method: order.payment_method,
-          paymentMethod: order.payment_method, // Include both for compatibility
-          created_at: order.created_at,
-          createdAt: order.created_at, // Include both for compatibility
-          updated_at: order.updated_at,
-          updatedAt: order.updated_at, // Include both for compatibility
-          items: []
-        } as OrderWithItems;
+        console.error(`Error processing order ${order.id}:`, e);
+        return null;
       }
-    });
+    }));
+    
+    // Filter out any null values from failed processing
+    return ordersWithItems.filter(Boolean) as OrderWithItems[];
   } catch (error) {
     console.error('Exception in getFarmerOrders:', error);
     return [];

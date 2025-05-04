@@ -12,6 +12,8 @@ export const getFarmerOrderDetails = async (
   farmerId: string
 ): Promise<OrderWithItems | null> => {
   try {
+    console.log(`Getting details for order ${orderId} for farmer ${farmerId}`);
+    
     // First verify this is an order that belongs to the farmer
     const orderIds = await getOrderIdsForFarmerDirect(farmerId);
     
@@ -19,6 +21,8 @@ export const getFarmerOrderDetails = async (
       console.log(`Order ${orderId} does not belong to farmer ${farmerId}`);
       return null;
     }
+    
+    console.log(`Order ${orderId} belongs to farmer ${farmerId}, fetching details`);
     
     // Fetch the order with buyer information
     const { data: order, error: orderError } = await supabase
@@ -56,6 +60,8 @@ export const getFarmerOrderDetails = async (
       console.error('Error fetching order items:', itemsError);
       return null;
     }
+    
+    console.log(`Found ${orderItems?.length || 0} items for order ${orderId}`);
     
     // Combine order with its items
     const fullOrder = {

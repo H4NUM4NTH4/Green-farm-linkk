@@ -57,6 +57,14 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
           continue;
         }
         
+        const farmerId = product?.user_id;
+        console.log(`Found farmer ID ${farmerId} for product ${item.product_id}`);
+        
+        if (!farmerId) {
+          console.error(`No farmer ID found for product ${item.product_id}`);
+          continue;
+        }
+        
         // Add the order item using a direct RPC call
         const { error: itemError } = await supabase.rpc(
           'add_order_item' as any,
@@ -65,12 +73,14 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
             p_product_id: item.product_id,
             p_quantity: item.quantity,
             p_price: item.price,
-            p_farmer_id: product ? product.user_id : null
+            p_farmer_id: farmerId
           }
         );
 
         if (itemError) {
           console.error('Error adding order item:', itemError, 'for product:', item.product_id);
+        } else {
+          console.log(`Successfully added order item for product ${item.product_id} with farmer ${farmerId}`);
         }
       } catch (error) {
         console.error(`Error processing item ${item.product_id}:`, error);
