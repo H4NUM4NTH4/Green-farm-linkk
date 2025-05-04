@@ -1,7 +1,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RawOrder, OrderWithItems, OrderStatus } from '../types';
+import { RawOrder, OrderWithItems, OrderStatus, BuyerData, BuyerError } from '../types';
 import { ProductWithImages } from '@/types/product';
+
+// Type guard to check if the buyer object is of type BuyerData
+function isBuyerData(buyer: BuyerData | BuyerError | undefined): buyer is BuyerData {
+  return buyer !== undefined && 'id' in buyer && !('error' in buyer);
+}
 
 export const checkColumnExists = async (table: string, column: string): Promise<boolean> => {
   try {
@@ -90,6 +95,28 @@ export const mapRawOrderToTyped = (rawOrder: RawOrder): OrderWithItems => {
       }))
     : [];
 
+  // Handle buyer information using type guard
+  let buyer: { 
+    id: string; 
+    fullName: string; 
+    full_name: string; // Include both for compatibility
+    email?: string 
+  } | undefined = undefined;
+  
+  if (rawOrder.buyer) {
+    if (isBuyerData(rawOrder.buyer)) {
+      buyer = {
+        id: rawOrder.buyer.id,
+        fullName: rawOrder.buyer.full_name || 'Unknown User',
+        full_name: rawOrder.buyer.full_name || 'Unknown User', // Include both for compatibility
+        email: rawOrder.buyer.email
+      };
+    } else {
+      // If it's a BuyerError, leave buyer as undefined
+      console.log('Buyer data has an error:', rawOrder.buyer);
+    }
+  }
+
   // Convert the raw database object to our typed model
   return {
     id: rawOrder.id,
@@ -106,12 +133,7 @@ export const mapRawOrderToTyped = (rawOrder: RawOrder): OrderWithItems => {
     createdAt: rawOrder.created_at, // Include both for compatibility
     updated_at: rawOrder.updated_at,
     updatedAt: rawOrder.updated_at, // Include both for compatibility
-    buyer: rawOrder.buyer ? {
-      id: rawOrder.buyer.id,
-      fullName: rawOrder.buyer.full_name || 'Unknown User',
-      full_name: rawOrder.buyer.full_name || 'Unknown User', // Include both for compatibility
-      email: rawOrder.buyer.email
-    } : undefined,
+    buyer: buyer,
     items: orderItems
   } as OrderWithItems;
 };
