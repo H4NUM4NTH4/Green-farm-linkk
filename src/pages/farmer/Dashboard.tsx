@@ -1,287 +1,277 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import { useAuth } from '@/contexts/AuthContext';
-import { fetchProducts } from '@/services/productService';
-import { ProductWithImages } from '@/types/product';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import FarmerDashboardLayout from '@/components/layout/FarmerDashboardLayout';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Leaf, Package, TrendingUp, Plus, ArrowUpRight } from 'lucide-react';
-import { useAuthorization } from '@/hooks/useAuthorization';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
+import { Loader2, Eye, Plus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getOrdersForFarmer } from '@/services/orders';
+import { Order } from '@/types/product';
+import OrderStats from '@/components/farmer/OrderStats';
+import OrderRequestCard from '@/components/orders/OrderRequestCard';
+import { formatCurrency } from '@/lib/utils';
 
-const FarmerDashboard: React.FC = () => {
-  const [products, setProducts] = useState<ProductWithImages[]>([]);
-  const [recentProducts, setRecentProducts] = useState<ProductWithImages[]>([]);
-  const [loading, setLoading] = useState(true);
+const Dashboard = () => {
   const { user } = useAuth();
-  const { hasPermission } = useAuthorization();
-  const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadProducts = async () => {
+    const loadOrders = async () => {
       if (!user) return;
       
       try {
         setLoading(true);
-        const productsData = await fetchProducts();
-        
-        // Filter to only show the current user's products
-        const userProducts = productsData.filter(p => p.user_id === user.id);
-        setProducts(userProducts);
-        
-        // Get the 3 most recent products
-        const recent = [...userProducts].sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ).slice(0, 3);
-        setRecentProducts(recent);
+        const farmerOrders = await getOrdersForFarmer(user.id);
+        setOrders(farmerOrders);
       } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('Error loading orders:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadProducts();
+    loadOrders();
   }, [user]);
 
-  const totalProducts = products.length;
-  const activeProducts = products.filter(p => p.status === 'active').length;
-  const soldProducts = products.filter(p => p.status === 'sold').length;
+  // Process data for charts
+  const processOrdersForChart = (orders: Order[]) => {
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return {
+        date: date.toISOString().split('T')[0],
+        display: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        orders: 0,
+        amount: 0
+      };
+    });
+    
+    // Group orders by date
+    orders.forEach(order => {
+      const orderDate = new Date(order.created_at).toISOString().split('T')[0];
+      const existingDay = last7Days.find(day => day.date === orderDate);
+      
+      if (existingDay) {
+        existingDay.orders += 1;
+        existingDay.amount += order.total_amount;
+      }
+    });
+    
+    return last7Days;
+  };
+
+  const chartData = processOrdersForChart(orders);
+
+  // Get the latest pending orders for the dashboard
+  const pendingOrders = orders
+    .filter(order => order.status === 'pending')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-grow pt-8">
-        <div className="agri-container">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-2xl font-bold mb-1">Farmer Dashboard</h1>
-              <p className="text-muted-foreground">
-                Manage your products and track your sales
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={() => navigate('/farmer/products')} variant="outline" size="sm" className="gap-1">
-                <Package className="h-4 w-4" />
-                My Products
-              </Button>
-              <Button onClick={() => navigate('/farmer/product/add')} size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                Add Product
-              </Button>
-            </div>
+    <FarmerDashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Farmer Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back to your farmer dashboard
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-          
-          {/* Dashboard summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Products
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="text-2xl font-bold">{totalProducts}</div>
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Package className="h-5 w-5 text-primary" />
+        ) : (
+          <>
+            <OrderStats orders={orders} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Sales Overview</CardTitle>
+                  <CardDescription>
+                    Orders and revenue for the last 7 days
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="h-[300px] p-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={chartData}
+                        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis 
+                          dataKey="display" 
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => {
+                            const parts = value.split(' ');
+                            if (parts.length >= 2) {
+                              return `${parts[0]} ${parts[1]}`;
+                            }
+                            return value;
+                          }}
+                        />
+                        <YAxis 
+                          tickFormatter={(value) => formatCurrency(value)} 
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => [formatCurrency(value as number), 'Revenue']} 
+                          labelFormatter={(label) => `Date: ${label}`}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="amount" 
+                          stroke="#8884d8" 
+                          fillOpacity={1} 
+                          fill="url(#colorAmount)" 
+                          name="Revenue"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Listings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="text-2xl font-bold">{activeProducts}</div>
-                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <Leaf className="h-5 w-5 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Products Sold
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="text-2xl font-bold">{soldProducts}</div>
-                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <BarChart3 className="h-5 w-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Market Trend
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="text-2xl font-bold">Active</div>
-                    <div className="flex items-center text-green-600 text-sm">
-                      <TrendingUp className="h-4 w-4 mr-1" />
-                      <span>+5.2% this month</span>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>Pending Orders</CardTitle>
+                      <CardDescription>
+                        Orders awaiting your action
+                      </CardDescription>
                     </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/farmer/orders">
+                        <Eye className="h-4 w-4 mr-1" />
+                        View All
+                      </Link>
+                    </Button>
                   </div>
-                  <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-amber-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {pendingOrders.length > 0 ? (
+                      pendingOrders.map((order) => (
+                        <div key={order.id} className="p-3 border rounded-lg hover:bg-muted/50">
+                          <Link to={`/farmer/orders/${order.id}`} className="block">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-sm font-medium">
+                                  #{order.id.substring(0, 8)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(order.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">
+                                  {formatCurrency(order.total_amount)}
+                                </p>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-muted-foreground text-sm">
+                          No pending orders at the moment
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Recent Products */}
-          <Card className="mb-8">
-            <CardHeader>
+                </CardContent>
+                <CardFooter className="flex justify-center border-t">
+                  <Button variant="link" asChild className="w-full">
+                    <Link to="/farmer/orders?status=pending">View all pending orders</Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Recent Products</CardTitle>
-                  <CardDescription>Your recently added products</CardDescription>
+                  <h2 className="text-xl font-bold">Recent Orders</h2>
+                  <p className="text-muted-foreground">
+                    Your most recent orders
+                  </p>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => navigate('/farmer/products')}
-                  className="flex items-center gap-1 text-sm"
-                >
-                  View All
-                  <ArrowUpRight className="h-4 w-4" />
+                <Button asChild>
+                  <Link to="/farmer/products/add">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add New Product
+                  </Link>
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center items-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-                </div>
-              ) : recentProducts.length === 0 ? (
-                <div className="text-center p-8">
-                  <p className="text-muted-foreground mb-4">You haven't added any products yet.</p>
-                  <Button onClick={() => navigate('/farmer/product/add')} variant="outline" className="gap-2">
-                    <Plus size={16} />
-                    Add Your First Product
-                  </Button>
+              
+              {orders.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {orders
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, 3)
+                    .map((order) => (
+                      <OrderRequestCard key={order.id} order={order} />
+                    ))
+                  }
                 </div>
               ) : (
-                <div className="grid gap-4">
-                  {recentProducts.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded overflow-hidden bg-gray-100">
-                          <img 
-                            src={product.primary_image || '/placeholder.svg'} 
-                            alt={product.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{product.name}</h3>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">${product.price.toFixed(2)}</span>
-                            <span className="text-xs text-muted-foreground">•</span>
-                            <Badge
-                              variant={
-                                product.status === 'active' ? 'default' :
-                                product.status === 'sold' ? 'secondary' : 'destructive'
-                              }
-                              className="text-xs py-0 h-5"
-                            >
-                              {product.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => navigate(`/farmer/product/edit/${product.id}`)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <p className="text-muted-foreground mb-4">
+                      No orders have been placed for your products yet.
+                    </p>
+                    <Button asChild>
+                      <Link to="/farmer/products/add">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add New Product
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {orders.length > 3 && (
+                <div className="flex justify-center">
+                  <Button variant="outline" asChild>
+                    <Link to="/farmer/orders">View all orders</Link>
+                  </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
-          
-          {/* Management Tools */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Plus className="h-5 w-5 text-primary" />
-                    Add New Product
-                  </CardTitle>
-                  <CardDescription>List a new product for sale</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button onClick={() => navigate('/farmer/product/add')} className="w-full">
-                    Add Product
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    Manage Products
-                  </CardTitle>
-                  <CardDescription>Edit and update your products</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button onClick={() => navigate('/farmer/products')} variant="outline" className="w-full">
-                    View All Products
-                  </Button>
-                </CardContent>
-              </Card>
-              
-              <Card className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    View Analytics
-                  </CardTitle>
-                  <CardDescription>See how your products are performing</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button onClick={() => navigate('/dashboard')} variant="outline" className="w-full">
-                    View Analytics
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+          </>
+        )}
+      </div>
+    </FarmerDashboardLayout>
   );
 };
 
-export default FarmerDashboard;
+export default Dashboard;

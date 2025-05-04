@@ -1,49 +1,48 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import FarmerDashboardLayout from '@/components/layout/FarmerDashboardLayout';
 import { 
-  Card, CardHeader, CardTitle, CardDescription, 
-  CardContent, CardFooter 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { 
-  Select, SelectContent, SelectItem, 
-  SelectTrigger, SelectValue 
-} from '@/components/ui/select';
+  Breadcrumb, 
+  BreadcrumbItem, 
+  BreadcrumbLink, 
+  BreadcrumbList, 
+  BreadcrumbSeparator 
+} from "@/components/ui/breadcrumb";
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, User, Phone, MapPin, Mail, CreditCard } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { 
+  ChevronLeft, 
+  Loader2, 
+  FileText,
+  Home
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getOrderDetailsForFarmer, updateOrderStatus } from '@/services/orders';
+import { getOrderDetailsForFarmer } from '@/services/orders';
 import { Order, OrderStatus } from '@/types/product';
-import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatCurrency } from '@/lib/utils';
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'processing':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'shipped':
-      return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-    case 'delivered':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'cancelled':
-      return 'bg-red-100 text-red-800 border-red-200';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
+import OrderActionButtons from '@/components/orders/OrderActionButtons';
+import ShippingDetailsModal from '@/components/orders/ShippingDetailsModal';
 
 const OrderDetail = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [showShippingModal, setShowShippingModal] = useState(false);
 
   useEffect(() => {
     const loadOrderDetails = async () => {
@@ -52,12 +51,23 @@ const OrderDetail = () => {
       try {
         setLoading(true);
         const orderDetails = await getOrderDetailsForFarmer(orderId, user.id);
+        
+        if (!orderDetails) {
+          toast({
+            title: "Order not found",
+            description: "The order details could not be found or you don't have permission to view them",
+            variant: "destructive",
+          });
+          navigate('/farmer/orders');
+          return;
+        }
+        
         setOrder(orderDetails);
       } catch (error) {
         console.error('Error loading order details:', error);
         toast({
           title: "Error",
-          description: "Could not load order details",
+          description: "Failed to load order details",
           variant: "destructive",
         });
       } finally {
@@ -66,259 +76,261 @@ const OrderDetail = () => {
     };
 
     loadOrderDetails();
-  }, [orderId, user]);
+  }, [user, orderId, toast, navigate]);
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!order || !orderId) return;
-    
-    try {
-      setUpdating(true);
-      const updated = await updateOrderStatus(orderId, newStatus as OrderStatus);
-      
-      if (updated) {
-        setOrder({
-          ...order,
-          status: newStatus as OrderStatus
-        });
-        
-        toast({
-          title: "Status Updated",
-          description: `Order status changed to "${newStatus}"`,
-        });
-      } else {
-        toast({
-          title: "Update Failed",
-          description: "Could not update order status",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast({
-        title: "Error",
-        description: "Could not update order status",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdating(false);
+  const handleStatusUpdate = (newStatus: OrderStatus) => {
+    if (order) {
+      setOrder({ ...order, status: newStatus });
     }
   };
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center py-20">
-          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+      <FarmerDashboardLayout>
+        <div className="flex justify-center items-center h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </FarmerDashboardLayout>
     );
   }
 
   if (!order) {
     return (
-      <DashboardLayout>
+      <FarmerDashboardLayout>
         <div className="text-center py-12">
-          <h2 className="heading-3 mb-2">Order Not Found</h2>
-          <p className="text-muted-foreground mb-4">
+          <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
+          <p className="text-muted-foreground mb-6">
             The order you're looking for doesn't exist or you don't have permission to view it.
           </p>
           <Button onClick={() => navigate('/farmer/orders')}>
-            Back to Orders
+            <ChevronLeft className="mr-1 h-4 w-4" /> Back to Orders
           </Button>
         </div>
-      </DashboardLayout>
+      </FarmerDashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <FarmerDashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink as={Link} to="/farmer/dashboard">
+                <Home className="h-3 w-3 mr-1" />
+                Home
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink as={Link} to="/farmer/orders">
+                Orders
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink>
+                Order #{orderId?.substring(0, 8)}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="flex flex-col md:flex-row justify-between items-start gap-4">
           <div>
-            <Button 
-              variant="ghost" 
-              className="mb-2 -ml-4" 
-              onClick={() => navigate('/farmer/orders')}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Orders
-            </Button>
-            <h1 className="heading-2 mb-1">Order #{order.id.substring(0, 8)}</h1>
+            <h1 className="text-3xl font-bold mb-1">Order Details</h1>
             <p className="text-muted-foreground">
-              Placed on {formatDate(order.created_at)}
+              Order #{orderId?.substring(0, 8)} • {formatDate(order.created_at)}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-end">
-              <div className="text-sm text-muted-foreground">Status</div>
-              <Badge className={getStatusColor(order.status)}>
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-              </Badge>
-            </div>
+          
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/farmer/orders')}
+            >
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              Back to Orders
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowShippingModal(true)}
+            >
+              <FileText className="mr-1 h-4 w-4" />
+              Shipping Details
+            </Button>
           </div>
         </div>
 
-        <Card className="border-2 border-green-100">
-          <CardHeader className="bg-green-50">
-            <CardTitle className="text-base flex items-center">
-              <User className="h-5 w-5 mr-2 text-green-600" />
-              Buyer Information
-            </CardTitle>
-            <CardDescription>
-              Complete details about the customer who placed this order
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm">Contact Details</h3>
-                <div className="flex items-start gap-2">
-                  <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{order.shipping_address.fullName}</p>
-                  </div>
-                </div>
-                {order.buyer?.email && (
-                  <div className="flex items-start gap-2">
-                    <Mail className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <div>
-                      <p>{order.buyer.email}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <Phone className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p>{order.shipping_address.phone}</p>
-                  </div>
-                </div>
+        {/* Order Status and Actions */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+              <div>
+                <CardTitle className="text-xl">Order Status</CardTitle>
+                <CardDescription>
+                  Current status: <OrderStatusBadge status={order.status} className="ml-1" />
+                </CardDescription>
               </div>
               
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm">Shipping Address</h3>
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <p>{order.shipping_address.address}</p>
-                    <p>
-                      {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zipCode}
-                    </p>
-                    <p>{order.shipping_address.country}</p>
-                  </div>
-                </div>
-              </div>
+              <OrderActionButtons
+                orderId={order.id}
+                currentStatus={order.status}
+                onStatusUpdate={handleStatusUpdate}
+              />
             </div>
-            
-            <Separator />
-            
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm">Payment Information</h3>
-              <div className="flex items-start gap-2">
-                <CreditCard className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <div>
-                  <p>
-                    <span className="font-medium">Method: </span>
-                    {order.payment_method === 'credit-card' 
-                      ? 'Credit/Debit Card' 
-                      : 'Cash on Delivery'}
-                  </p>
-                  <p className="mt-1">
-                    <span className="font-medium">Total Amount: </span>
-                    <span className="text-lg font-semibold">{formatCurrency(order.total_amount)}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Items</CardTitle>
-            <CardDescription>
-              {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''} in this order
-            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {order.items?.map((item) => (
-                <div 
-                  key={item.id} 
-                  className="flex items-center gap-4 border-b pb-4 last:border-0"
-                >
-                  <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden">
-                    {item.product?.primary_image && (
-                      <img 
-                        src={item.product.primary_image} 
-                        alt={item.product?.name || 'Product image'} 
-                        className="w-full h-full object-cover" 
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h3 className="font-medium">
-                        {item.product?.name || `Product ID: ${item.product_id}`}
-                      </h3>
-                      <p className="font-medium">
-                        {formatCurrency(item.price * item.quantity)}
-                      </p>
-                    </div>
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <p>{formatCurrency(item.price)} × {item.quantity}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        </Card>
 
-            <Separator className="my-6" />
-
-            <div className="flex justify-end">
-              <div className="w-1/2 space-y-2">
-                <div className="flex justify-between">
-                  <p className="text-muted-foreground">Subtotal</p>
-                  <p>{formatCurrency(order.total_amount)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Order Info */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Order Items</CardTitle>
+              <CardDescription>
+                Items included in this order
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {order.items && order.items.length > 0 ? (
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium">Product</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium">Quantity</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Price</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {order.items.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center">
+                                {item.product?.images && item.product.images.length > 0 && (
+                                  <img 
+                                    src={item.product.images[0].url || item.product.images[0].image_path} 
+                                    alt={item.product.name} 
+                                    className="w-10 h-10 object-cover rounded mr-3"
+                                  />
+                                )}
+                                <div>
+                                  <div className="font-medium">
+                                    {item.product?.name || 'Unknown Product'}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    ID: {item.product_id.substring(0, 8)}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">{item.quantity}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(item.price)}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(item.price * item.quantity)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border rounded-md bg-muted/25">
+                    <p className="text-muted-foreground">No items found in this order</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end border-t bg-muted/25 py-4">
+              <div className="text-right">
+                <div className="flex justify-between w-48">
+                  <span>Subtotal:</span>
+                  <span>{formatCurrency(order.total_amount)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <p className="text-muted-foreground">Shipping</p>
-                  <p>Free</p>
-                </div>
-                <Separator className="my-2" />
-                <div className="flex justify-between font-medium">
-                  <p>Total</p>
-                  <p className="text-lg">{formatCurrency(order.total_amount)}</p>
+                <div className="flex justify-between w-48 font-bold mt-2">
+                  <span>Total:</span>
+                  <span>{formatCurrency(order.total_amount)}</span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between border-t pt-6">
-            <Select 
-              defaultValue={order.status} 
-              onValueChange={handleStatusChange}
-              disabled={updating}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Update Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            </CardFooter>
+          </Card>
+
+          {/* Customer Info */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Name</div>
+                    <div>{order.buyer?.full_name || 'Unknown'}</div>
+                  </div>
+                  {order.buyer?.email && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">Email</div>
+                      <div>{order.buyer.email}</div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             
-            <Button variant="outline" asChild>
-              <Link to="/farmer/orders">
-                Back to Orders
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Shipping Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  <div className="font-medium">{order.shipping_address.fullName}</div>
+                  <div>{order.shipping_address.address}</div>
+                  <div>
+                    {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zipCode}
+                  </div>
+                  <div>{order.shipping_address.country}</div>
+                  <div className="pt-2">{order.shipping_address.phone}</div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  onClick={() => setShowShippingModal(true)} 
+                  variant="outline" 
+                  className="w-full"
+                >
+                  View Shipping Label
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Payment Method</div>
+                    <div className="capitalize">{order.payment_method}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Payment Status</div>
+                    <div className="capitalize">Paid</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
+
+      <ShippingDetailsModal
+        order={order}
+        open={showShippingModal}
+        onOpenChange={setShowShippingModal}
+      />
+    </FarmerDashboardLayout>
   );
 };
 

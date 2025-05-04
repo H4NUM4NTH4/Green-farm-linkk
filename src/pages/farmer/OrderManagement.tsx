@@ -1,41 +1,40 @@
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import FarmerDashboardLayout from '@/components/layout/FarmerDashboardLayout';
 import { 
-  Table, TableBody, TableCaption, TableCell, 
-  TableHead, TableHeader, TableRow 
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Loader2, Eye, FileSpreadsheet } from 'lucide-react';
+import { 
+  FileSpreadsheet, 
+  Loader2
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOrdersForFarmer } from '@/services/orders';
-import { formatDate, formatCurrency } from '@/lib/utils';
-import { Order } from '@/types/product';
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'processing':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'shipped':
-      return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-    case 'delivered':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'cancelled':
-      return 'bg-red-100 text-red-800 border-red-200';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
+import { Order, OrderStatus } from '@/types/product';
+import OrderRequestCard from '@/components/orders/OrderRequestCard';
+import OrderStats from '@/components/farmer/OrderStats';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from '@/components/ui/input';
 
 const OrderManagement = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -55,15 +54,62 @@ const OrderManagement = () => {
     loadOrders();
   }, [user]);
 
+  // Handle status update from child components
+  const handleStatusUpdate = (orderId: string, newStatus: OrderStatus) => {
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+  };
+
+  // Filter orders based on active tab and search query
+  const filteredOrders = orders.filter(order => {
+    // First apply status filter
+    if (activeTab !== 'all' && order.status !== activeTab) {
+      return false;
+    }
+    
+    // Then apply search filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      return (
+        order.id.toLowerCase().includes(searchLower) ||
+        (order.buyer?.full_name || '').toLowerCase().includes(searchLower) ||
+        order.shipping_address.fullName.toLowerCase().includes(searchLower) ||
+        order.shipping_address.address.toLowerCase().includes(searchLower) ||
+        order.shipping_address.city.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return true;
+  });
+  
+  // Sort the filtered orders
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    if (sortOrder === 'newest') {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    } else if (sortOrder === 'oldest') {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    } else if (sortOrder === 'highest') {
+      return b.total_amount - a.total_amount;
+    } else if (sortOrder === 'lowest') {
+      return a.total_amount - b.total_amount;
+    }
+    return 0;
+  });
+
   return (
-    <DashboardLayout>
+    <FarmerDashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="heading-2 mb-2">Order Management</h1>
+          <h1 className="text-3xl font-bold mb-2">Order Management</h1>
           <p className="text-muted-foreground">
             Track and manage orders for your products
           </p>
         </div>
+
+        <OrderStats orders={orders} />
 
         <Card>
           <CardHeader>
@@ -71,7 +117,7 @@ const OrderManagement = () => {
               <div>
                 <CardTitle>Recent Orders</CardTitle>
                 <CardDescription>
-                  {orders.length} order{orders.length !== 1 ? 's' : ''} found
+                  {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''} found
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" disabled>
@@ -81,71 +127,65 @@ const OrderManagement = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <TabsList className="mb-4 md:mb-0">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="pending">Pending</TabsTrigger>
+                  <TabsTrigger value="processing">Processing</TabsTrigger>
+                  <TabsTrigger value="shipped">Shipped</TabsTrigger>
+                  <TabsTrigger value="delivered">Delivered</TabsTrigger>
+                  <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+                </TabsList>
+                
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                  <Input
+                    placeholder="Search orders..."
+                    className="w-full md:w-[200px]"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  
+                  <Select value={sortOrder} onValueChange={setSortOrder}>
+                    <SelectTrigger className="w-full md:w-[180px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest first</SelectItem>
+                      <SelectItem value="oldest">Oldest first</SelectItem>
+                      <SelectItem value="highest">Highest amount</SelectItem>
+                      <SelectItem value="lowest">Lowest amount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            ) : orders.length === 0 ? (
-              <div className="text-center py-8 border rounded-lg bg-gray-50">
-                <p className="text-muted-foreground">No orders found for your products yet</p>
-              </div>
-            ) : (
-              <Table>
-                <TableCaption>List of orders for your products</TableCaption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order ID</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">
-                        #{order.id.substring(0, 8)}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(order.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        {order.buyer?.full_name || 'Unknown'}
-                      </TableCell>
-                      <TableCell>
-                        {formatCurrency(order.total_amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={getStatusColor(order.status)}
-                        >
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          asChild
-                        >
-                          <Link to={`/farmer/orders/${order.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+
+              <TabsContent value={activeTab} className="mt-0">
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : sortedOrders.length === 0 ? (
+                  <div className="text-center py-12 border rounded-lg bg-gray-50">
+                    <p className="text-muted-foreground">No orders found{activeTab !== 'all' ? ` with status "${activeTab}"` : ''}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {sortedOrders.map((order) => (
+                      <OrderRequestCard 
+                        key={order.id} 
+                        order={order} 
+                        onStatusUpdate={handleStatusUpdate}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </FarmerDashboardLayout>
   );
 };
 
