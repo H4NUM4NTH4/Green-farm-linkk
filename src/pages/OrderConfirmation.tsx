@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -5,7 +6,7 @@ import Footer from '@/components/layout/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { OrderStatusBadge } from '@/components/orders/OrderStatusBadge';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, CheckCircle } from 'lucide-react';

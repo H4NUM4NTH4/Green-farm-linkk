@@ -34,7 +34,6 @@ export const getFarmerOrderDetails = async (
         total_amount,
         shipping_address,
         payment_method,
-        payment_id,
         created_at,
         updated_at
       `)
@@ -93,7 +92,7 @@ export const getFarmerOrderDetails = async (
     console.log(`Found ${orderItems?.length || 0} items for order ${orderId}`);
     
     // Combine order with its items and buyer info
-    const fullOrder = {
+    const fullOrder: RawOrder = {
       ...order,
       order_items: orderItems || [],
       buyer: buyer || undefined
@@ -101,8 +100,7 @@ export const getFarmerOrderDetails = async (
     
     // Convert the raw database objects to our typed models
     try {
-      const rawOrder = fullOrder as unknown as RawOrder;
-      return mapRawOrderToTyped(rawOrder);
+      return mapRawOrderToTyped(fullOrder);
     } catch (e) {
       console.error('Error mapping order to typed model:', e);
       return null;
