@@ -14,6 +14,7 @@ export type CreateOrderInput = {
     phone: string;
   };
   payment_method: string;
+  payment_id?: string;
   items: {
     product_id: string;
     quantity: number;
@@ -49,6 +50,7 @@ export interface RawOrder {
   total_amount: number;
   shipping_address: any; // Using any to accommodate JSON type from database
   payment_method: string;
+  payment_id?: string;
   created_at: string;
   updated_at: string;
   order_items?: any[];

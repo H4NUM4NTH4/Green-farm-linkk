@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +16,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { createOrder } from '@/services/orders';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +26,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CheckCircle, ShoppingBag, AlertCircle } from 'lucide-react';
+import { CheckCircle, ShoppingBag, AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name is required' }),
@@ -43,11 +45,13 @@ const Checkout = () => {
   const { user } = useAuth();
   const { cart, clearCart } = useCart();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [orderData, setOrderData] = useState<any>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingFormSchema),
@@ -55,6 +59,17 @@ const Checkout = () => {
       paymentMethod: 'credit-card'
     }
   });
+
+  // Check for canceled payment
+  useEffect(() => {
+    if (searchParams.get('canceled')) {
+      toast({
+        title: "Payment canceled",
+        description: "You have canceled the payment process. Your order has not been placed.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: ShippingFormValues) => {
     if (!user) {
@@ -77,6 +92,7 @@ const Checkout = () => {
       return;
     }
 
+    // Prepare order data with cart contents and form data
     const newOrderData = {
       user_id: user.id,
       total_amount: cart.totalPrice,
@@ -93,32 +109,43 @@ const Checkout = () => {
       items: cart.items.map(item => ({
         product_id: item.product.id,
         quantity: item.quantity,
-        price: item.product.price
+        price: item.product.price,
+        product: item.product
       }))
     };
 
     setOrderData(newOrderData);
-    setShowConfirmDialog(true);
+    
+    // For credit card payments, show confirmation dialog
+    if (data.paymentMethod === 'credit-card') {
+      setShowConfirmDialog(true);
+    } else {
+      // For cash on delivery, proceed with standard order creation
+      handleCashOnDeliveryOrder(newOrderData);
+    }
   };
 
-  const handleConfirmOrder = async () => {
-    if (!orderData) return;
-    
+  const handleCashOnDeliveryOrder = async (orderData: any) => {
     try {
       setIsSubmitting(true);
-      setShowConfirmDialog(false);
       
       const orderId = await createOrder(orderData);
       
       if (orderId) {
         setCreatedOrderId(orderId);
         setShowSuccessDialog(true);
+        clearCart();
         toast({
           title: "Order placed successfully",
-          description: "Your order has been created",
+          description: "Your order has been created with cash on delivery",
         });
       } else {
         console.error("Failed to create order");
+        toast({
+          title: "Error placing order",
+          description: "Failed to create your order. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -130,6 +157,44 @@ const Checkout = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setShowConfirmDialog(false);
+    }
+  };
+
+  const handleStripeCheckout = async () => {
+    try {
+      setIsProcessingPayment(true);
+      setShowConfirmDialog(false);
+      
+      // Call Supabase Edge Function to create Stripe checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { orderData }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Error creating checkout session');
+      }
+      
+      if (data?.url) {
+        // Store session ID in localStorage for order confirmation
+        if (data.sessionId) {
+          localStorage.setItem('stripe_session_id', data.sessionId);
+        }
+        
+        // Redirect to Stripe checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error("Stripe checkout error:", error);
+      toast({
+        title: "Payment initialization failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setIsProcessingPayment(false);
     }
   };
 
@@ -233,9 +298,12 @@ const Checkout = () => {
                       <div className="flex items-center space-x-2 border rounded-md p-3">
                         <RadioGroupItem value="credit-card" id="credit-card" />
                         <Label htmlFor="credit-card" className="flex-grow cursor-pointer">
-                          Credit / Debit Card
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Credit / Debit Card
+                          </div>
                           <p className="text-sm text-muted-foreground">
-                            Pay with your card (Demo - no real payment processing)
+                            Pay securely with your card (Test Mode - use 4242 4242 4242 4242)
                           </p>
                         </Label>
                       </div>
@@ -257,9 +325,16 @@ const Checkout = () => {
                       type="submit" 
                       className="w-full" 
                       size="lg"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isProcessingPayment}
                     >
-                      {isSubmitting ? 'Processing...' : 'Review Order'}
+                      {isSubmitting || isProcessingPayment ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        'Review Order'
+                      )}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -352,6 +427,11 @@ const Checkout = () => {
               <p className="text-sm text-muted-foreground">
                 {orderData && orderData.payment_method === 'credit-card' ? 'Credit/Debit Card' : 'Cash on Delivery'}
               </p>
+              {orderData && orderData.payment_method === 'credit-card' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  <strong>Test Mode:</strong> Use card number 4242 4242 4242 4242 with any future expiry date and CVV
+                </p>
+              )}
             </div>
           </div>
           
@@ -360,10 +440,27 @@ const Checkout = () => {
               Back to Checkout
             </Button>
             <Button 
-              onClick={handleConfirmOrder} 
-              disabled={isSubmitting}
+              onClick={orderData?.payment_method === 'credit-card' ? handleStripeCheckout : () => handleCashOnDeliveryOrder(orderData)}
+              disabled={isSubmitting || isProcessingPayment}
+              className="gap-2"
             >
-              {isSubmitting ? 'Processing...' : 'Confirm Order'}
+              {isSubmitting || isProcessingPayment ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {orderData?.payment_method === 'credit-card' ? (
+                    <>
+                      <CreditCard className="h-4 w-4" />
+                      Pay with Card
+                    </>
+                  ) : (
+                    'Confirm Order'
+                  )}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

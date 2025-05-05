@@ -34,6 +34,7 @@ export const getFarmerOrderDetails = async (
         total_amount,
         shipping_address,
         payment_method,
+        payment_id,
         created_at,
         updated_at
       `)
