@@ -24,16 +24,18 @@ export const getFarmerOrderDetails = async (
     
     console.log(`Order ${orderId} belongs to farmer ${farmerId}, fetching details`);
     
-    // Fetch the order with buyer information
+    // Fetch the order with basic information
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
-        *,
-        buyer:user_id (
-          id,
-          full_name,
-          email
-        )
+        id,
+        user_id,
+        status,
+        total_amount,
+        shipping_address,
+        payment_method,
+        created_at,
+        updated_at
       `)
       .eq('id', orderId)
       .single();
@@ -43,18 +45,44 @@ export const getFarmerOrderDetails = async (
       return null;
     }
     
+    // Fetch buyer information
+    const { data: buyer, error: buyerError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .eq('id', order.user_id)
+      .single();
+      
+    if (buyerError) {
+      console.error('Error fetching buyer details:', buyerError);
+      // Continue anyway, as we can show the order without buyer details
+    }
+    
     // Fetch order items with product details
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
       .select(`
-        *,
+        id,
+        order_id,
+        product_id,
+        quantity,
+        price,
         product:product_id (
-          *,
-          images:product_images (*)
+          id,
+          name,
+          description,
+          price,
+          quantity,
+          category,
+          quantity_unit,
+          images:product_images (
+            id,
+            image_path,
+            is_primary
+          )
         )
       `)
       .eq('order_id', orderId)
-      .eq('farmer_id', farmerId); // Ensure we only get items belonging to this farmer
+      .eq('farmer_id', farmerId);
     
     if (itemsError) {
       console.error('Error fetching order items:', itemsError);
@@ -63,24 +91,15 @@ export const getFarmerOrderDetails = async (
     
     console.log(`Found ${orderItems?.length || 0} items for order ${orderId}`);
     
-    // Combine order with its items
+    // Combine order with its items and buyer info
     const fullOrder = {
       ...order,
-      order_items: orderItems || []
+      order_items: orderItems || [],
+      buyer: buyer || undefined
     };
-    
-    // Parse the shipping address if it's a string
-    if (typeof fullOrder.shipping_address === 'string') {
-      try {
-        fullOrder.shipping_address = JSON.parse(fullOrder.shipping_address);
-      } catch (e) {
-        console.error('Error parsing shipping address:', e);
-      }
-    }
     
     // Convert the raw database objects to our typed models
     try {
-      // Use a two-step cast to avoid TypeScript error
       const rawOrder = fullOrder as unknown as RawOrder;
       return mapRawOrderToTyped(rawOrder);
     } catch (e) {

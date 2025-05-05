@@ -14,6 +14,7 @@ export type OrderListFilters = {
 
 /**
  * Retrieves all orders containing products from a specific farmer
+ * This implementation avoids the RLS recursion issue by using a simplified approach
  */
 export const getFarmerOrders = async (
   farmerId: string,
@@ -30,7 +31,7 @@ export const getFarmerOrders = async (
       limit = 10
     } = filters;
 
-    // Get all order IDs that contain products from this farmer
+    // Step 1: Get all order IDs that contain products from this farmer
     const orderIds = await getOrderIdsForFarmerDirect(farmerId);
     
     if (orderIds.length === 0) {
@@ -38,18 +39,20 @@ export const getFarmerOrders = async (
       return [];
     }
 
-    console.log(`Found ${orderIds.length} order IDs for farmer ${farmerId}:`, orderIds);
+    console.log(`Found ${orderIds.length} order IDs for farmer ${farmerId}`);
 
-    // Use the orderIds to fetch order details
+    // Step 2: Fetch basic order details using the order IDs
     let query = supabase
       .from('orders')
       .select(`
-        *,
-        buyer:user_id (
-          id,
-          full_name,
-          email
-        )
+        id,
+        user_id,
+        status,
+        total_amount,
+        shipping_address,
+        payment_method,
+        created_at,
+        updated_at
       `)
       .in('id', orderIds);
 
@@ -70,6 +73,9 @@ export const getFarmerOrders = async (
     // Apply pagination
     const from = (page - 1) * limit;
     query = query.range(from, from + limit - 1);
+    
+    // Order by most recent first
+    query = query.order('created_at', { ascending: false });
 
     // Execute the query
     const { data: orders, error } = await query;
@@ -86,17 +92,39 @@ export const getFarmerOrders = async (
 
     console.log(`Found ${orders.length} orders for farmer ${farmerId}`);
 
-    // For each order, fetch the order items that belong to this farmer
-    const ordersWithItems = await Promise.all(orders.map(async (order) => {
+    // Step 3: For each order, fetch buyer information and order items
+    const ordersWithDetails = await Promise.all(orders.map(async (order) => {
       try {
+        // Fetch buyer information for this order
+        const { data: buyerData, error: buyerError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('id', order.user_id)
+          .single();
+          
+        if (buyerError) {
+          console.error(`Error fetching buyer for order ${order.id}:`, buyerError);
+        }
+        
         // Fetch order items for this order that belong to this farmer
         const { data: items, error: itemsError } = await supabase
           .from('order_items')
           .select(`
-            *,
+            id,
+            order_id,
+            product_id,
+            quantity,
+            price,
             product:product_id (
-              *,
-              images:product_images (*)
+              id,
+              name,
+              description,
+              price,
+              images:product_images (
+                id,
+                image_path,
+                is_primary
+              )
             )
           `)
           .eq('order_id', order.id)
@@ -107,42 +135,28 @@ export const getFarmerOrders = async (
           return null;
         }
         
-        // Add items to order
-        const orderWithItems = {
+        // Construct the full order object
+        const rawOrder: RawOrder = {
           ...order,
-          order_items: items || []
+          order_items: items || [],
+          buyer: buyerData || undefined
         };
         
-        // Parse shipping address if needed
-        if (typeof orderWithItems.shipping_address === 'string') {
-          try {
-            orderWithItems.shipping_address = JSON.parse(orderWithItems.shipping_address);
-          } catch (e) {
-            console.error('Error parsing shipping address:', e);
-          }
-        }
-        
-        // Map to typed order
-        try {
-          const rawOrder = orderWithItems as unknown as RawOrder;
-          return mapRawOrderToTyped(rawOrder);
-        } catch (e) {
-          console.error('Error mapping order to typed model:', e);
-          return null;
-        }
+        // Map to our typed model
+        return mapRawOrderToTyped(rawOrder);
       } catch (e) {
         console.error(`Error processing order ${order.id}:`, e);
         return null;
       }
     }));
     
-    // Filter out any null values from failed processing
-    return ordersWithItems.filter(Boolean) as OrderWithItems[];
+    // Filter out any null values and return the results
+    return ordersWithDetails.filter(Boolean) as OrderWithItems[];
   } catch (error) {
     console.error('Exception in getFarmerOrders:', error);
     return [];
   }
 };
 
-// Export the function with the name expected by farmerOrders.ts
+// Export the function with the name expected by the components
 export const getOrdersForFarmer = getFarmerOrders;
