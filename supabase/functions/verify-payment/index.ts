@@ -8,6 +8,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Hardcode the Stripe API key for now (in a production environment, you should use environment variables)
+const STRIPE_SECRET_KEY = "sk_test_51RLUlPQPVrDKBz6Wo5rMLIxO354DB4T96AymQgOvL0nWjRz9auf79YrWcz1DVB1Ot6WZx8ez3BJ3nh6VkivPcj7p00MCeqe0oh";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -18,7 +21,7 @@ serve(async (req) => {
     const { sessionId } = await req.json();
     
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripe = new Stripe(STRIPE_SECRET_KEY, {
       apiVersion: "2023-10-16",
     });
 
