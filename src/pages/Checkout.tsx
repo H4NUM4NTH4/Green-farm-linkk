@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -52,6 +51,8 @@ const Checkout = () => {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingFormSchema),
@@ -165,35 +166,82 @@ const Checkout = () => {
     try {
       setIsProcessingPayment(true);
       setShowConfirmDialog(false);
+      setStripeError(null);
+      
+      // Create a timeout to detect if the Stripe checkout doesn't load properly
+      const timeout = setTimeout(() => {
+        console.error("Stripe checkout session creation timed out");
+        toast({
+          title: "Payment initialization failed",
+          description: "Could not connect to the payment gateway. Please try again or choose Cash on Delivery.",
+          variant: "destructive",
+        });
+        setIsProcessingPayment(false);
+      }, 15000); // 15 seconds timeout
+      
+      setPaymentTimeout(timeout);
       
       // Call Supabase Edge Function to create Stripe checkout session
+      console.log("Calling create-checkout-session function");
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: { orderData }
       });
       
+      // Clear the timeout since we got a response
+      if (paymentTimeout) {
+        clearTimeout(paymentTimeout);
+      }
+      
       if (error) {
+        console.error("Supabase function error:", error);
         throw new Error(error.message || 'Error creating checkout session');
       }
       
-      if (data?.url) {
-        // Store session ID in localStorage for order confirmation
-        if (data.sessionId) {
-          localStorage.setItem('stripe_session_id', data.sessionId);
-        }
-        
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
-      } else {
+      if (!data) {
+        console.error("No data returned from checkout session creation");
+        throw new Error('No checkout data received');
+      }
+      
+      if (data.error) {
+        console.error("Stripe error:", data.error, data.details);
+        throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
+      }
+      
+      if (!data.url) {
+        console.error("No checkout URL received", data);
         throw new Error('No checkout URL received');
       }
+      
+      console.log("Checkout session created successfully", { 
+        sessionId: data.sessionId,
+        url: data.url 
+      });
+      
+      // Store session ID in localStorage for order confirmation
+      if (data.sessionId) {
+        localStorage.setItem('stripe_session_id', data.sessionId);
+      }
+      
+      // Redirect to Stripe checkout
+      console.log("Redirecting to Stripe checkout:", data.url);
+      window.location.href = data.url;
     } catch (error) {
+      // Clear the timeout if there was an error
+      if (paymentTimeout) {
+        clearTimeout(paymentTimeout);
+      }
+      
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error("Stripe checkout error:", error);
+      
+      setStripeError(errorMessage);
+      
       toast({
         title: "Payment initialization failed",
         description: errorMessage,
         variant: "destructive",
       });
+      
       setIsProcessingPayment(false);
     }
   };
