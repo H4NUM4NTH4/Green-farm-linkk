@@ -27,6 +27,30 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CheckCircle, ShoppingBag, AlertCircle, CreditCard, Loader2 } from 'lucide-react';
 
+// Add a component that will load the Stripe script
+const StripeScriptLoader = () => {
+  useEffect(() => {
+    // Check if Stripe script is already loaded
+    if (!document.getElementById('stripe-js')) {
+      const script = document.createElement('script');
+      script.id = 'stripe-js';
+      script.src = 'https://js.stripe.com/v3/';
+      script.async = true;
+      document.body.appendChild(script);
+      
+      script.onload = () => {
+        console.log('Stripe script loaded successfully');
+      };
+      
+      script.onerror = () => {
+        console.error('Error loading Stripe script');
+      };
+    }
+  }, []);
+  
+  return null;
+};
+
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: 'Full name is required' }),
   address: z.string().min(5, { message: 'Address is required' }),
@@ -258,8 +282,10 @@ const Checkout = () => {
     navigate('/marketplace');
   };
 
+  // Render component with Stripe script loader
   return (
     <div className="min-h-screen flex flex-col">
+      <StripeScriptLoader />
       <Navbar />
       <main className="flex-grow py-8">
         <div className="agri-container">
@@ -476,9 +502,17 @@ const Checkout = () => {
                 {orderData && orderData.payment_method === 'credit-card' ? 'Credit/Debit Card' : 'Cash on Delivery'}
               </p>
               {orderData && orderData.payment_method === 'credit-card' && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  <strong>Test Mode:</strong> Use card number 4242 4242 4242 4242 with any future expiry date and CVV
-                </p>
+                <div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <strong>Test Mode:</strong> Use card number 4242 4242 4242 4242 with any future expiry date and CVV
+                  </p>
+                  {stripeError && (
+                    <div className="mt-2 p-3 bg-red-50 text-red-700 rounded-md text-xs">
+                      <p className="font-semibold">Error processing payment:</p>
+                      <p>{stripeError}</p>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
