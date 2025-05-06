@@ -19,6 +19,7 @@ serve(async (req) => {
 
   try {
     const { sessionId } = await req.json();
+    console.log(`Processing Stripe session: ${sessionId}`);
     
     // Initialize Stripe
     const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -27,6 +28,7 @@ serve(async (req) => {
 
     // Retrieve checkout session to verify payment status
     const session = await stripe.checkout.sessions.retrieve(sessionId);
+    console.log(`Payment status for session ${sessionId}: ${session.payment_status}`);
     
     if (session.payment_status !== "paid") {
       return new Response(JSON.stringify({ 
@@ -40,6 +42,7 @@ serve(async (req) => {
 
     // If we have a successful payment, create the order in our database
     const orderMetadata = JSON.parse(session.metadata?.order_details || "{}");
+    console.log(`Processing order with metadata:`, orderMetadata);
     
     // Create Supabase client with service role key for administrative operations
     const supabaseAdmin = createClient(
@@ -58,6 +61,8 @@ serve(async (req) => {
       payment_intent: session.payment_intent
     };
 
+    console.log(`Creating order with data:`, orderData);
+
     // Use the RPC function to create the order
     const { data: orderId, error: orderError } = await supabaseAdmin.rpc(
       'create_order',
@@ -70,22 +75,24 @@ serve(async (req) => {
     );
 
     if (orderError) {
+      console.error(`Error creating order:`, orderError);
       throw new Error(`Error creating order: ${orderError.message}`);
     }
 
+    console.log(`Order created with ID: ${orderId}`);
+
     // Process each line item to add to order_items
     const lineItems = await stripe.checkout.sessions.listLineItems(sessionId);
-    
-    // We need to map line items back to our products
-    // This would be more robust if you stored product IDs in the session metadata
-    // For simplicity, we'll retrieve the entire cart from the user's session
+    console.log(`Found ${lineItems.data.length} line items in checkout session`);
     
     // Try to get cart data from metadata if available
     let cartData = [];
     if (orderMetadata.cart_items && Array.isArray(orderMetadata.cart_items)) {
       cartData = orderMetadata.cart_items;
+      console.log(`Using cart data from metadata with ${cartData.length} items`);
     } else {
       // Fall back to querying the database if needed
+      console.log(`No cart data in metadata, checking database for user ${orderData.user_id}`);
       const { data, error } = await supabaseAdmin
         .from('shopping_cart')
         .select('*')
@@ -95,6 +102,7 @@ serve(async (req) => {
         console.error("Error fetching cart:", error);
       } else if (data) {
         cartData = data;
+        console.log(`Found ${data.length} items in shopping cart table`);
       }
     }
 
@@ -105,6 +113,7 @@ serve(async (req) => {
       for (const item of cartData) {
         try {
           const productId = item.product_id || item.id;
+          console.log(`Processing order item for product ${productId}`);
           
           // Get product details to get the farmer_id
           const { data: product, error: productError } = await supabaseAdmin
@@ -132,7 +141,7 @@ serve(async (req) => {
               p_order_id: orderId,
               p_product_id: productId,
               p_quantity: item.quantity,
-              p_price: item.price || item.product.price,
+              p_price: item.price || item.product?.price,
               p_farmer_id: farmerId
             }
           );
@@ -150,11 +159,16 @@ serve(async (req) => {
       // Clear the cart after successful order
       if (orderMetadata.user_id) {
         try {
-          await supabaseAdmin
+          const { error: clearCartError } = await supabaseAdmin
             .from('shopping_cart')
             .delete()
             .eq('user_id', orderMetadata.user_id);
-          console.log(`Cleared shopping cart for user ${orderMetadata.user_id}`);
+            
+          if (clearCartError) {
+            console.error('Error clearing shopping cart:', clearCartError);
+          } else {
+            console.log(`Cleared shopping cart for user ${orderMetadata.user_id}`);
+          }
         } catch (err) {
           console.error('Error clearing shopping cart:', err);
         }
@@ -163,6 +177,7 @@ serve(async (req) => {
       console.warn("No cart data available to create order items");
     }
 
+    // Return success response with order ID
     return new Response(JSON.stringify({ 
       success: true, 
       orderId,

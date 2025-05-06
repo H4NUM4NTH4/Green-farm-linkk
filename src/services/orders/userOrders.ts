@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderStatus, OrderItem } from '@/types/product';
 import { fetchProductById } from '../productService';
@@ -50,7 +51,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     const orderItems = orderItemsData || [];
     console.log(`Found ${orderItems.length} order items for order ${orderId}`);
 
-    // Fetch product details for each order item separately
+    // Fetch product details for each order item with proper error handling
     const itemsWithProducts: OrderItem[] = [];
     
     for (const item of orderItems) {
@@ -65,15 +66,25 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
           });
         } else {
           console.warn(`Product not found for ID: ${item.product_id}`);
-          // Still include the item even if product details couldn't be fetched
+          // Include the item with fallback product data if product details couldn't be fetched
           itemsWithProducts.push({
             ...item,
             product: {
               id: item.product_id,
               name: 'Product Not Available',
               price: item.price,
+              user_id: '',
+              description: null,
+              quantity: 0,
+              quantity_unit: 'unit',
+              location: '',
+              category: '',
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              ai_recommended: false,
               images: []
-            } as any
+            }
           });
         }
       } catch (e) {
@@ -85,8 +96,18 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
             id: item.product_id,
             name: 'Error Loading Product',
             price: item.price,
+            user_id: '',
+            description: null,
+            quantity: 0,
+            quantity_unit: 'unit',
+            location: '',
+            category: '',
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            ai_recommended: false,
             images: []
-          } as any
+          }
         });
       }
     }
