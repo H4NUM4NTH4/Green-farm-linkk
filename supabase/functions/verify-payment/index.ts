@@ -79,59 +79,88 @@ serve(async (req) => {
     // We need to map line items back to our products
     // This would be more robust if you stored product IDs in the session metadata
     // For simplicity, we'll retrieve the entire cart from the user's session
-    const { data: cartData, error: cartError } = await supabaseAdmin
-      .from('shopping_cart')
-      .select('*')
-      .eq('user_id', orderData.user_id);
-
-    if (cartError) {
-      console.error("Error fetching cart:", cartError);
+    
+    // Try to get cart data from metadata if available
+    let cartData = [];
+    if (orderMetadata.cart_items && Array.isArray(orderMetadata.cart_items)) {
+      cartData = orderMetadata.cart_items;
+    } else {
+      // Fall back to querying the database if needed
+      const { data, error } = await supabaseAdmin
+        .from('shopping_cart')
+        .select('*')
+        .eq('user_id', orderData.user_id);
+      
+      if (error) {
+        console.error("Error fetching cart:", error);
+      } else if (data) {
+        cartData = data;
+      }
     }
 
     // Process order items if we have the cart
     if (cartData && cartData.length > 0) {
+      console.log(`Processing ${cartData.length} order items`);
+      
       for (const item of cartData) {
-        // Get product details to get the farmer_id
-        const { data: product, error: productError } = await supabaseAdmin
-          .from('products')
-          .select('user_id')
-          .eq('id', item.product_id)
-          .single();
-        
-        if (productError) {
-          console.error('Error fetching product details:', productError);
-          continue;
-        }
-        
-        const farmerId = product?.user_id;
-        
-        if (!farmerId) {
-          console.error(`No farmer ID found for product ${item.product_id}`);
-          continue;
-        }
-        
-        // Add the order item
-        const { error: itemError } = await supabaseAdmin.rpc(
-          'add_order_item',
-          {
-            p_order_id: orderId,
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-            p_price: item.price,
-            p_farmer_id: farmerId
+        try {
+          const productId = item.product_id || item.id;
+          
+          // Get product details to get the farmer_id
+          const { data: product, error: productError } = await supabaseAdmin
+            .from('products')
+            .select('user_id')
+            .eq('id', productId)
+            .single();
+          
+          if (productError) {
+            console.error(`Error fetching product details for ${productId}:`, productError);
+            continue;
           }
-        );
+          
+          const farmerId = product?.user_id;
+          
+          if (!farmerId) {
+            console.error(`No farmer ID found for product ${productId}`);
+            continue;
+          }
+          
+          // Add the order item
+          const { error: itemError } = await supabaseAdmin.rpc(
+            'add_order_item',
+            {
+              p_order_id: orderId,
+              p_product_id: productId,
+              p_quantity: item.quantity,
+              p_price: item.price || item.product.price,
+              p_farmer_id: farmerId
+            }
+          );
 
-        if (itemError) {
-          console.error('Error adding order item:', itemError);
+          if (itemError) {
+            console.error(`Error adding order item for product ${productId}:`, itemError);
+          } else {
+            console.log(`Successfully added order item for product ${productId}`);
+          }
+        } catch (err) {
+          console.error('Error processing order item:', err);
         }
       }
 
       // Clear the cart after successful order
-      await supabaseAdmin
-        .from('shopping_cart')
-        .delete()
-        .eq('user_id', orderData.user_id);
+      if (orderMetadata.user_id) {
+        try {
+          await supabaseAdmin
+            .from('shopping_cart')
+            .delete()
+            .eq('user_id', orderMetadata.user_id);
+          console.log(`Cleared shopping cart for user ${orderMetadata.user_id}`);
+        } catch (err) {
+          console.error('Error clearing shopping cart:', err);
+        }
+      }
+    } else {
+      console.warn("No cart data available to create order items");
     }
 
     return new Response(JSON.stringify({ 

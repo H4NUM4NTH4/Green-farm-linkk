@@ -4,6 +4,8 @@ import { fetchProductById } from '../productService';
 
 export const getOrderById = async (orderId: string): Promise<Order | null> => {
   try {
+    console.log(`Fetching order details for order ID: ${orderId}`);
+    
     // Fetch the order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
@@ -35,7 +37,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
           };
 
     // Fetch order items
-    const { data: orderItems, error: orderItemsError } = await supabase
+    const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
       .select('*')
       .eq('order_id', orderId);
@@ -45,22 +47,47 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       return null;
     }
 
-    // Fetch product details for each order item
+    const orderItems = orderItemsData || [];
+    console.log(`Found ${orderItems.length} order items for order ${orderId}`);
+
+    // Fetch product details for each order item separately
     const itemsWithProducts: OrderItem[] = [];
-    for (const item of orderItems || []) {
+    
+    for (const item of orderItems) {
       try {
+        console.log(`Fetching product details for product ID: ${item.product_id}`);
         const product = await fetchProductById(item.product_id);
+        
         if (product) {
           itemsWithProducts.push({
             ...item,
             product
           });
         } else {
-          itemsWithProducts.push(item as OrderItem);
+          console.warn(`Product not found for ID: ${item.product_id}`);
+          // Still include the item even if product details couldn't be fetched
+          itemsWithProducts.push({
+            ...item,
+            product: {
+              id: item.product_id,
+              name: 'Product Not Available',
+              price: item.price,
+              images: []
+            } as any
+          });
         }
       } catch (e) {
-        // If we can't fetch a product, still keep the item
-        itemsWithProducts.push(item as OrderItem);
+        console.error(`Error fetching product ${item.product_id}:`, e);
+        // If we can't fetch a product, still keep the item with basic info
+        itemsWithProducts.push({
+          ...item,
+          product: {
+            id: item.product_id,
+            name: 'Error Loading Product',
+            price: item.price,
+            images: []
+          } as any
+        });
       }
     }
 
@@ -73,6 +100,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       buyer: buyerInfo
     };
 
+    console.log(`Successfully processed order ${orderId} with ${itemsWithProducts.length} items`);
     return order;
   } catch (error) {
     console.error('Error in getOrderById:', error);

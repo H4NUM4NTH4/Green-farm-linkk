@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams();
@@ -17,6 +17,7 @@ const OrderConfirmation = () => {
   const navigate = useNavigate();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -88,50 +89,31 @@ const OrderConfirmation = () => {
       
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('orders')
-          .select(`
-            id,
-            user_id,
-            status,
-            total_amount,
-            shipping_address,
-            payment_method,
-            created_at,
-            order_items (
-              id,
-              order_id,
-              product_id,
-              quantity,
-              price,
-              product:product_id (
-                id,
-                name,
-                price,
-                images:product_images (
-                  id,
-                  image_path,
-                  is_primary
-                )
-              )
-            )
-          `)
-          .eq('id', orderId)
-          .single();
+        setError(null);
         
-        if (error) {
-          console.error('Error fetching order:', error);
+        // FIX: Modified query to correctly handle product relationship
+        // Instead of using nested select, use JOIN approach with getOrderById service
+        const orderDetails = await getOrderById(orderId);
+        
+        if (!orderDetails) {
+          setError('Order not found');
           toast({
             title: 'Failed to load order',
-            description: error.message,
+            description: 'The order could not be found',
             variant: 'destructive',
           });
           return;
         }
         
-        setOrder(data);
-      } catch (error) {
-        console.error('Error:', error);
+        setOrder(orderDetails);
+      } catch (err: any) {
+        console.error('Error fetching order:', err);
+        setError(err.message || 'Failed to load order details');
+        toast({
+          title: 'Failed to load order',
+          description: err.message || 'An unexpected error occurred',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
@@ -157,6 +139,41 @@ const OrderConfirmation = () => {
                 : 'This may take a moment'
               }
             </p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow py-12 flex items-center justify-center">
+          <div className="max-w-md w-full mx-auto">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-center mb-4">
+                  <AlertTriangle className="h-12 w-12 text-red-500" />
+                </div>
+                <CardTitle className="text-center">Failed to Load Order</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="mb-6 text-muted-foreground">
+                  {error}
+                </p>
+                <div className="space-y-2">
+                  <Button asChild className="w-full">
+                    <Link to="/marketplace">Continue Shopping</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to="/">Return to Home</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </main>
         <Footer />
@@ -211,8 +228,9 @@ const OrderConfirmation = () => {
     );
   }
 
+  // Helper functions for rendering order data
   const getOrderItems = () => {
-    return order?.order_items || [];
+    return order?.items || [];
   };
 
   const getOrderTotal = () => {
@@ -234,7 +252,7 @@ const OrderConfirmation = () => {
 
   // Get product image or fallback
   const getProductImage = (item: any) => {
-    if (item.product?.images && item.product.images.length > 0) {
+    if (item?.product?.images && item.product.images.length > 0) {
       // Try to find primary image first
       const primaryImage = item.product.images.find((img: any) => img.is_primary);
       if (primaryImage) return primaryImage.image_path;
@@ -358,5 +376,8 @@ const OrderConfirmation = () => {
     </div>
   );
 };
+
+// Import the getOrderById service directly to properly fetch order details
+import { getOrderById } from '@/services/orders/userOrders';
 
 export default OrderConfirmation;
