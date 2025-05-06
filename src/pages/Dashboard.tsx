@@ -7,63 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, BrainCircuit, CalendarClock, LineChart, TrendingUp, Download, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { 
+  BarChart3, 
+  BrainCircuit, 
+  CalendarClock, 
+  LineChart, 
+  TrendingUp, 
+  Download, 
+  RefreshCw, 
+  AlertCircle, 
+  Loader2,
+  ArrowUpRight,
+  ArrowDownRight 
+} from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
-
-// Market data service
-const fetchMarketData = async () => {
-  // Simulate API call with random data generation
-  // In a real app, this would be an actual API call to your backend
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const getRandomPercentage = (min: number, max: number) => {
-    return +(min + Math.random() * (max - min)).toFixed(1);
-  };
-  
-  const getRandomVolume = () => {
-    return +(0.8 + Math.random() * 1.5).toFixed(1) + 'M';
-  };
-  
-  const getRandomAccuracy = () => {
-    return +(90 + Math.random() * 8).toFixed(1) + '%';
-  };
-  
-  const getMarketTrend = () => {
-    const value = getRandomPercentage(-3, 8);
-    return { 
-      value, 
-      trend: value > 0 ? 'Bullish' : 'Bearish',
-      percentage: value
-    };
-  };
-
-  const trend = getMarketTrend();
-  
-  return {
-    marketTrend: trend.trend,
-    trendPercentage: trend.percentage,
-    tradingVolume: getRandomVolume(),
-    volumeChange: getRandomPercentage(5, 15),
-    forecastAccuracy: getRandomAccuracy(),
-    nextUpdate: `${Math.floor(Math.random() * 3)}h ${Math.floor(Math.random() * 59)}m`,
-    alerts: [
-      {
-        id: 1,
-        message: "Weather conditions in the Midwest may affect wheat prices in the next 2 weeks. Consider securing your supply now.",
-        severity: "warning",
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 2,
-        message: "Corn prices expected to rise due to increasing international demand.",
-        severity: "info",
-        timestamp: new Date().toISOString()
-      }
-    ],
-    lastUpdated: new Date().toISOString()
-  };
-};
+import { fetchMarketData } from '@/services/marketData/usdaMarketService';
 
 const Dashboard = () => {
   const [activeAlert, setActiveAlert] = useState(0);
@@ -75,6 +34,33 @@ const Dashboard = () => {
     refetchInterval: 120000, // Refetch every 2 minutes
     staleTime: 30000, // Consider data fresh for 30 seconds
   });
+
+  // Calculate time since last update
+  const [timeSinceUpdate, setTimeSinceUpdate] = useState<string>('Just now');
+  
+  useEffect(() => {
+    if (!marketData) return;
+    
+    const updateTimeSince = () => {
+      const lastUpdated = new Date(marketData.lastUpdated);
+      const now = new Date();
+      const diffMs = now.getTime() - lastUpdated.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) {
+        setTimeSinceUpdate('Just now');
+      } else if (diffMins === 1) {
+        setTimeSinceUpdate('1 minute ago');
+      } else {
+        setTimeSinceUpdate(`${diffMins} minutes ago`);
+      }
+    };
+    
+    updateTimeSince();
+    const interval = setInterval(updateTimeSince, 30000);
+    
+    return () => clearInterval(interval);
+  }, [marketData]);
 
   // Rotate alerts every 10 seconds
   useEffect(() => {
@@ -100,6 +86,42 @@ const Dashboard = () => {
     });
   };
 
+  // Get alert severity style
+  const getAlertStyle = (severity?: string) => {
+    switch (severity) {
+      case 'critical':
+        return 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/20';
+      case 'warning':
+        return 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20';
+      default:
+        return 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20';
+    }
+  };
+
+  // Get alert text style
+  const getAlertTextStyle = (severity?: string) => {
+    switch (severity) {
+      case 'critical':
+        return 'text-red-600 dark:text-red-400';
+      case 'warning':
+        return 'text-amber-600 dark:text-amber-400';
+      default:
+        return 'text-blue-600 dark:text-blue-400';
+    }
+  };
+
+  // Get alert icon
+  const getAlertIcon = (severity?: string) => {
+    switch (severity) {
+      case 'critical':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'warning':
+        return <AlertCircle className="h-5 w-5 text-amber-600" />;
+      default:
+        return <AlertCircle className="h-5 w-5 text-blue-600" />;
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -113,7 +135,7 @@ const Dashboard = () => {
               </p>
               {!isLoading && marketData && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Last updated: {new Date(marketData.lastUpdated).toLocaleTimeString()}
+                  Last updated: {timeSinceUpdate}
                 </p>
               )}
             </div>
@@ -162,7 +184,11 @@ const Dashboard = () => {
                           ? 'text-green-600' 
                           : 'text-red-600'
                       }`}>
-                        <TrendingUp className="h-4 w-4 mr-1" />
+                        {(marketData?.trendPercentage || 0) >= 0 ? (
+                          <ArrowUpRight className="h-4 w-4 mr-1" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 mr-1" />
+                        )}
                         <span>{(marketData?.trendPercentage || 0) >= 0 ? '+' : ''}{marketData?.trendPercentage}% this month</span>
                       </div>
                     </div>
@@ -261,7 +287,9 @@ const Dashboard = () => {
           </div>
           
           {/* AI alert */}
-          <Card className="mb-8 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+          <Card className={`mb-8 ${marketData?.alerts && marketData.alerts.length > 0 ? 
+            getAlertStyle(marketData.alerts[activeAlert]?.severity) : 
+            'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20'}`}>
             <CardContent className="p-4 flex items-center gap-4">
               {isLoading ? (
                 <>
@@ -276,19 +304,27 @@ const Dashboard = () => {
               ) : (
                 <>
                   <div className="flex-shrink-0">
-                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                    {marketData?.alerts && marketData.alerts.length > 0 ? 
+                      getAlertIcon(marketData.alerts[activeAlert]?.severity) : 
+                      <AlertCircle className="h-5 w-5 text-amber-600" />}
                   </div>
                   <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-400">
+                    <p className={`font-medium ${marketData?.alerts && marketData.alerts.length > 0 ? 
+                      getAlertTextStyle(marketData.alerts[activeAlert]?.severity) : 
+                      'text-amber-800 dark:text-amber-400'}`}>
                       AI Market Alert
                     </p>
-                    <p className="text-sm text-amber-700 dark:text-amber-500">
+                    <p className={`text-sm ${marketData?.alerts && marketData.alerts.length > 0 ? 
+                      getAlertTextStyle(marketData.alerts[activeAlert]?.severity) : 
+                      'text-amber-700 dark:text-amber-500'}`}>
                       {marketData?.alerts && marketData.alerts.length > 0 
                         ? marketData.alerts[activeAlert]?.message 
                         : "No current market alerts"}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" className="ml-auto border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30">
+                  <Button variant="outline" size="sm" className={`ml-auto ${marketData?.alerts && marketData.alerts.length > 0 ?
+                    `border-${marketData.alerts[activeAlert]?.severity === 'critical' ? 'red' : 'amber'}-300 dark:border-${marketData.alerts[activeAlert]?.severity === 'critical' ? 'red' : 'amber'}-700 text-${marketData.alerts[activeAlert]?.severity === 'critical' ? 'red' : 'amber'}-700 dark:text-${marketData.alerts[activeAlert]?.severity === 'critical' ? 'red' : 'amber'}-400 hover:bg-${marketData.alerts[activeAlert]?.severity === 'critical' ? 'red' : 'amber'}-100 dark:hover:bg-${marketData.alerts[activeAlert]?.severity === 'critical' ? 'red' : 'amber'}-900/30` :
+                    'border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'}`}>
                     View Details
                   </Button>
                 </>
@@ -383,27 +419,17 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <ul className="space-y-3">
-                      <li className="flex justify-between items-center border-b border-border pb-3">
-                        <div>
-                          <div className="font-medium">Organic Wheat</div>
-                          <div className="text-sm text-muted-foreground">Supply is decreasing, demand remains high</div>
-                        </div>
-                        <Badge className="bg-green-600">+7.9%</Badge>
-                      </li>
-                      <li className="flex justify-between items-center border-b border-border pb-3">
-                        <div>
-                          <div className="font-medium">Sweet Corn</div>
-                          <div className="text-sm text-muted-foreground">Seasonal demand spike expected</div>
-                        </div>
-                        <Badge className="bg-green-600">+6.4%</Badge>
-                      </li>
-                      <li className="flex justify-between items-center">
-                        <div>
-                          <div className="font-medium">Organic Tomatoes</div>
-                          <div className="text-sm text-muted-foreground">Premium prices in urban markets</div>
-                        </div>
-                        <Badge className="bg-green-600">+4.8%</Badge>
-                      </li>
+                      {marketData?.sellingRecommendations.map((item, index) => (
+                        <li key={index} className={`flex justify-between items-center ${
+                          index < marketData.sellingRecommendations.length - 1 ? 'border-b border-border pb-3' : ''
+                        }`}>
+                          <div>
+                            <div className="font-medium">{item.crop}</div>
+                            <div className="text-sm text-muted-foreground">{item.description}</div>
+                          </div>
+                          <Badge className="bg-green-600">+{item.changePercentage.toFixed(1)}%</Badge>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </CardContent>
@@ -429,27 +455,17 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <ul className="space-y-3">
-                      <li className="flex justify-between items-center border-b border-border pb-3">
-                        <div>
-                          <div className="font-medium">Barley</div>
-                          <div className="text-sm text-muted-foreground">Oversupply in midwest regions</div>
-                        </div>
-                        <Badge className="bg-red-600">-3.2%</Badge>
-                      </li>
-                      <li className="flex justify-between items-center border-b border-border pb-3">
-                        <div>
-                          <div className="font-medium">Apples</div>
-                          <div className="text-sm text-muted-foreground">Bumper harvest expected in Washington</div>
-                        </div>
-                        <Badge className="bg-red-600">-2.7%</Badge>
-                      </li>
-                      <li className="flex justify-between items-center">
-                        <div>
-                          <div className="font-medium">Coffee Beans</div>
-                          <div className="text-sm text-muted-foreground">International prices dropping</div>
-                        </div>
-                        <Badge className="bg-red-600">-4.5%</Badge>
-                      </li>
+                      {marketData?.buyingRecommendations.map((item, index) => (
+                        <li key={index} className={`flex justify-between items-center ${
+                          index < marketData.buyingRecommendations.length - 1 ? 'border-b border-border pb-3' : ''
+                        }`}>
+                          <div>
+                            <div className="font-medium">{item.crop}</div>
+                            <div className="text-sm text-muted-foreground">{item.description}</div>
+                          </div>
+                          <Badge className="bg-red-600">{item.changePercentage.toFixed(1)}%</Badge>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </CardContent>

@@ -51,12 +51,12 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     const orderItems = orderItemsData || [];
     console.log(`Found ${orderItems.length} order items for order ${orderId}`);
 
-    // Fetch product details for each order item with proper error handling
+    // Fetch product details for each order item with improved error handling
     const itemsWithProducts: OrderItem[] = [];
     
     for (const item of orderItems) {
       try {
-        console.log(`Fetching product details for product ID: ${item.product_id}`);
+        // Explicitly fetch each product individually to avoid relationship issues
         const product = await fetchProductById(item.product_id);
         
         if (product) {
@@ -66,7 +66,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
           });
         } else {
           console.warn(`Product not found for ID: ${item.product_id}`);
-          // Include the item with fallback product data if product details couldn't be fetched
+          // Include the item with fallback product data
           itemsWithProducts.push({
             ...item,
             product: {

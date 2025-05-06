@@ -3,95 +3,38 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Calendar, Droplets, LineChart, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-
-interface PriceData {
-  crop: string;
-  currentPrice: number;
-  predictedPrice: number;
-  changePercentage: number;
-  factors: {
-    weather: string;
-    supply: string;
-    demand: string;
-  };
-}
-
-// Function to fetch price prediction data
-const fetchPricePredictionData = async (): Promise<PriceData[]> => {
-  // Simulate API call with a delay
-  // In a real app, this would be an actual API call
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  
-  const getRandomPrice = (base: number) => {
-    return +(base + Math.random() * 0.5).toFixed(2);
-  };
-  
-  const getRandomPercentage = (min: number, max: number) => {
-    return +(min + Math.random() * (max - min)).toFixed(1);
-  };
-  
-  const weatherConditions = ['Favorable', 'Mixed', 'Concerning'];
-  const supplyConditions = ['Decreasing', 'Stable', 'Increasing'];
-  const demandConditions = ['Decreasing', 'Stable', 'Increasing'];
-  
-  const getRandomElement = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-  
-  // Base data
-  const baseData = [
-    {
-      crop: 'Wheat',
-      currentPrice: 7.25,
-      changePercentage: 7.9,
-    },
-    {
-      crop: 'Corn',
-      currentPrice: 4.95,
-      changePercentage: 8.1,
-    },
-    {
-      crop: 'Soybeans',
-      currentPrice: 13.45,
-      changePercentage: 5.9,
-    },
-  ];
-  
-  // Generate randomized data based on the base data
-  return baseData.map(item => {
-    const changePercentage = getRandomPercentage(3, 9);
-    const currentPrice = getRandomPrice(item.currentPrice * 0.9);
-    const predictedPrice = +(currentPrice * (1 + changePercentage / 100)).toFixed(2);
-    
-    return {
-      crop: item.crop,
-      currentPrice,
-      predictedPrice,
-      changePercentage,
-      factors: {
-        weather: getRandomElement(weatherConditions),
-        supply: getRandomElement(supplyConditions),
-        demand: getRandomElement(demandConditions)
-      }
-    };
-  });
-};
+import { 
+  LineChart as RechartsLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+import { fetchMarketData } from '@/services/marketData/usdaMarketService';
 
 const PricePrediction = () => {
   // Use React Query for data fetching with caching and automatic refetching
-  const { data: priceData, isLoading, isError } = useQuery({
-    queryKey: ['price-prediction'],
-    queryFn: fetchPricePredictionData,
+  const { data: marketData, isLoading, isError } = useQuery({
+    queryKey: ['market-data'],
+    queryFn: fetchMarketData,
     refetchInterval: 120000, // Refetch every 2 minutes
     staleTime: 60000, // Consider data fresh for 1 minute
   });
 
   // Last updated timestamp
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [selectedCrop, setSelectedCrop] = useState<string | null>(null);
 
   useEffect(() => {
-    if (priceData) {
+    if (marketData) {
       setLastUpdated(new Date());
+      if (!selectedCrop && marketData.crops.length > 0) {
+        setSelectedCrop(marketData.crops[0].crop);
+      }
     }
-  }, [priceData]);
+  }, [marketData, selectedCrop]);
 
   if (isError) {
     return (
@@ -107,6 +50,40 @@ const PricePrediction = () => {
       </Card>
     );
   }
+
+  // Get the selected crop data for the chart
+  const getSelectedCropData = () => {
+    if (!marketData || !selectedCrop) return null;
+    return marketData.crops.find(crop => crop.crop === selectedCrop);
+  };
+
+  // Get chart data for the selected crop
+  const getChartData = () => {
+    const cropData = getSelectedCropData();
+    if (!cropData) return [];
+    return cropData.priceHistory;
+  };
+
+  // Format chart data to include the predicted price
+  const formatChartData = () => {
+    const cropData = getSelectedCropData();
+    if (!cropData) return [];
+    
+    const chartData = [...cropData.priceHistory];
+    const lastDate = new Date(chartData[chartData.length - 1].date);
+    
+    // Add predicted price point
+    const predictedDate = new Date(lastDate);
+    predictedDate.setDate(predictedDate.getDate() + 30); // 30 days in the future
+    
+    chartData.push({
+      date: predictedDate.toISOString().split('T')[0],
+      price: cropData.predictedPrice,
+      isPredicted: true
+    });
+    
+    return chartData;
+  };
 
   return (
     <div>
@@ -124,8 +101,12 @@ const PricePrediction = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {priceData?.map((item, index) => (
-                  <div key={index} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                {marketData?.crops.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className={`border-b border-border pb-4 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/20 rounded p-2 transition-colors ${selectedCrop === item.crop ? 'bg-muted/30' : ''}`}
+                    onClick={() => setSelectedCrop(item.crop)}
+                  >
                     <div className="flex justify-between items-start mb-1">
                       <h3 className="font-semibold">{item.crop}</h3>
                       <div className={`text-xs px-2 py-1 rounded-full ${
@@ -182,9 +163,63 @@ const PricePrediction = () => {
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
                 <p className="text-sm text-muted-foreground">Loading chart data...</p>
               </div>
+            ) : selectedCrop ? (
+              <div className="w-full h-full min-h-[220px]">
+                <ResponsiveContainer width="100%" height={220}>
+                  <RechartsLineChart data={formatChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                      }}
+                    />
+                    <YAxis 
+                      tickFormatter={(value) => `$${value}`}
+                      domain={['auto', 'auto']}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`$${value}`, 'Price']}
+                      labelFormatter={(value) => {
+                        const date = new Date(value);
+                        return date.toLocaleDateString();
+                      }}
+                    />
+                    <Line 
+                      type="monotone"
+                      dataKey="price"
+                      stroke="#8884d8"
+                      activeDot={{ r: 8 }}
+                      strokeWidth={2}
+                      dot={(props) => {
+                        const { cx, cy, payload } = props;
+                        // If this is the predicted point, highlight it
+                        if (payload.isPredicted) {
+                          return (
+                            <svg x={cx - 10} y={cy - 10} width={20} height={20}>
+                              <circle cx="10" cy="10" r="6" fill="#8884d8" stroke="#fff" strokeWidth={2} />
+                            </svg>
+                          );
+                        }
+                        return <circle cx={cx} cy={cy} r={4} fill="#8884d8" />;
+                      }}
+                    />
+                  </RechartsLineChart>
+                </ResponsiveContainer>
+                <div className="mt-4 text-center text-muted-foreground text-xs">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                    <span>Historical prices</span>
+                    <div className="w-3 h-3 rounded-full bg-purple-500 ml-4 border-2 border-white"></div>
+                    <span>Predicted price ({getSelectedCropData()?.predictedPrice.toFixed(2)})</span>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="w-full h-full min-h-[200px] flex items-center justify-center bg-muted/40 rounded-md">
-                <p className="text-muted-foreground">AI Price Chart Visualization</p>
+                <p className="text-muted-foreground">Select a crop to view its price chart</p>
               </div>
             )}
           </CardContent>

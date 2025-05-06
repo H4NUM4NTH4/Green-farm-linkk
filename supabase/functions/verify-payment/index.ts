@@ -92,22 +92,74 @@ serve(async (req) => {
       console.log(`Using cart data from metadata with ${cartData.length} items`);
     } else {
       // Fall back to querying the database if needed
-      console.log(`No cart data in metadata, checking database for user ${orderData.user_id}`);
-      const { data, error } = await supabaseAdmin
-        .from('shopping_cart')
-        .select('*')
-        .eq('user_id', orderData.user_id);
-      
-      if (error) {
-        console.error("Error fetching cart:", error);
-      } else if (data) {
-        cartData = data;
-        console.log(`Found ${data.length} items in shopping cart table`);
+      try {
+        console.log(`No cart data in metadata, checking database for user ${orderData.user_id}`);
+        const { data, error } = await supabaseAdmin
+          .from('shopping_cart')
+          .select('*')
+          .eq('user_id', orderData.user_id);
+        
+        if (error) {
+          console.error("Error fetching cart:", error);
+        } else if (data) {
+          cartData = data;
+          console.log(`Found ${data.length} items in shopping cart table`);
+        }
+      } catch (err) {
+        console.error('Error fetching shopping cart data:', err);
       }
     }
 
-    // Process order items if we have the cart
-    if (cartData && cartData.length > 0) {
+    // Process order items from line items if cart data is not available
+    if (!cartData || cartData.length === 0) {
+      // Extract data from Stripe line items as fallback
+      console.log("Using line items from Stripe as fallback for order items");
+      
+      for (const item of lineItems.data) {
+        try {
+          const itemName = item.description || "Unknown product";
+          
+          // Try to find the product by name (not ideal but a fallback)
+          const { data: products, error: productsError } = await supabaseAdmin
+            .from('products')
+            .select('id, user_id, price')
+            .ilike('name', `%${itemName}%`)
+            .limit(1);
+          
+          if (productsError) {
+            console.error(`Error searching for product ${itemName}:`, productsError);
+            continue;
+          }
+          
+          if (products && products.length > 0) {
+            const product = products[0];
+            
+            // Add the order item
+            const { error: itemError } = await supabaseAdmin.rpc(
+              'add_order_item',
+              {
+                p_order_id: orderId,
+                p_product_id: product.id,
+                p_quantity: item.quantity || 1,
+                p_price: product.price,
+                p_farmer_id: product.user_id
+              }
+            );
+
+            if (itemError) {
+              console.error(`Error adding order item for product ${product.id}:`, itemError);
+            } else {
+              console.log(`Successfully added order item for product ${product.id}`);
+            }
+          } else {
+            console.error(`Could not find product matching "${itemName}"`);
+          }
+        } catch (err) {
+          console.error('Error processing line item:', err);
+        }
+      }
+    } else {
+      // Process order items if we have the cart
       console.log(`Processing ${cartData.length} order items`);
       
       for (const item of cartData) {
@@ -173,8 +225,6 @@ serve(async (req) => {
           console.error('Error clearing shopping cart:', err);
         }
       }
-    } else {
-      console.warn("No cart data available to create order items");
     }
 
     // Return success response with order ID
