@@ -6,11 +6,22 @@ import {
   Check, 
   X, 
   Truck, 
-  PackageCheck
+  PackageCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { OrderStatus } from '@/types/product';
 import { updateOrderStatus } from '@/services/orders/orderStatus';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface OrderActionButtonsProps {
   orderId: string;
@@ -25,6 +36,7 @@ const OrderActionButtons: React.FC<OrderActionButtonsProps> = ({
 }) => {
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     try {
@@ -34,9 +46,28 @@ const OrderActionButtons: React.FC<OrderActionButtonsProps> = ({
       
       if (success) {
         onStatusUpdate(newStatus);
+        
+        let statusMessage = "";
+        switch(newStatus) {
+          case 'processing':
+            statusMessage = "Order has been accepted and is now being processed";
+            break;
+          case 'cancelled':
+            statusMessage = "Order has been rejected";
+            break;
+          case 'shipped':
+            statusMessage = "Order has been marked as shipped";
+            break;
+          case 'delivered':
+            statusMessage = "Order has been marked as delivered";
+            break;
+          default:
+            statusMessage = `Order has been marked as ${newStatus}`;
+        }
+        
         toast({
           title: "Status updated",
-          description: `Order has been marked as ${newStatus}`,
+          description: statusMessage,
         });
       } else {
         throw new Error("Failed to update order status");
@@ -50,34 +81,61 @@ const OrderActionButtons: React.FC<OrderActionButtonsProps> = ({
       });
     } finally {
       setIsUpdating(false);
+      setShowRejectDialog(false);
     }
   };
 
   // Render different button sets based on current status
   if (currentStatus === 'pending') {
     return (
-      <div className="flex flex-wrap gap-2">
-        <Button 
-          variant="default" 
-          size="sm" 
-          onClick={() => handleStatusUpdate('processing')}
-          disabled={isUpdating}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          <Check className="h-4 w-4 mr-1" />
-          Accept Order
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => handleStatusUpdate('cancelled')}
-          disabled={isUpdating}
-          className="text-red-600 border-red-300 hover:bg-red-50"
-        >
-          <X className="h-4 w-4 mr-1" />
-          Reject
-        </Button>
-      </div>
+      <>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={() => handleStatusUpdate('processing')}
+            disabled={isUpdating}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Check className="h-4 w-4 mr-1" />
+            Accept Order
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowRejectDialog(true)}
+            disabled={isUpdating}
+            className="text-red-600 border-red-300 hover:bg-red-50"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Reject
+          </Button>
+        </div>
+        
+        {/* Confirmation dialog for rejecting order */}
+        <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reject Order</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to reject this order? This action cannot be undone.
+                The buyer will be notified that their order has been cancelled.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isUpdating}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleStatusUpdate('cancelled')}
+                disabled={isUpdating}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Reject Order
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 
