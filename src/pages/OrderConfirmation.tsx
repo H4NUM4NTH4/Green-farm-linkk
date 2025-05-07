@@ -8,26 +8,32 @@ import { Separator } from '@/components/ui/separator';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, CheckCircle, AlertTriangle, ShoppingBag } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, ShoppingBag, ArrowLeftIcon, PhoneIcon } from 'lucide-react';
 import { getOrderById } from '@/services/orders/userOrders';
 import { supabase } from '@/integrations/supabase/client';
 
 const OrderConfirmation = () => {
-  const { orderId } = useParams();
+  const { orderId: urlOrderId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  
+  // Get orderId from URL params, search params, or localStorage
+  const queryOrderId = searchParams.get('orderId');
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // Use the orderId from the URL params (/:orderId) or query string (?orderId=)
+  const orderId = urlOrderId || queryOrderId;
+
   // Process Stripe session if present
   useEffect(() => {
     const sessionId = searchParams.get('session_id') || localStorage.getItem('stripe_session_id');
     
     const processStripeSession = async () => {
-      if (sessionId) {
+      if (sessionId && !orderId) {
         try {
           setProcessingPayment(true);
           // Verify the payment with our Edge Function
@@ -50,7 +56,7 @@ const OrderConfirmation = () => {
           if (data?.success) {
             setPaymentSuccess(true);
             // If we have an order ID from the verification, navigate to it
-            if (data.orderId && !orderId) {
+            if (data.orderId) {
               navigate(`/order-confirmation/${data.orderId}`, { replace: true });
               
               // Clear session ID from storage
@@ -101,7 +107,10 @@ const OrderConfirmation = () => {
   // Fetch order details if we have an order ID
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      if (!orderId) return;
+      if (!orderId) {
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
@@ -216,7 +225,7 @@ const OrderConfirmation = () => {
     );
   }
 
-  // Order not found
+  // Order not found and not in loading or payment processing state
   if (!order && !loading) {
     return (
       <div className="min-h-screen flex flex-col">
