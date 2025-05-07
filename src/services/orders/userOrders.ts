@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderStatus, OrderItem } from '@/types/product';
 import { fetchProductById } from '../productService';
@@ -22,7 +21,7 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
     // Fetch user/buyer information separately to avoid RLS recursion
     const { data: userData, error: userError } = await supabase
       .from('profiles')
-      .select('id, full_name, email')
+      .select('id, full_name')
       .eq('id', orderData.user_id)
       .single();
 
@@ -115,11 +114,10 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       buyer: userData ? {
         id: userData.id,
         full_name: userData.full_name,
-        email: userData.email
+        // Remove email as it's not available in the profiles table
       } : {
         id: orderData.user_id,
         full_name: null,
-        email: null
       }
     };
 
