@@ -73,7 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, linkToProduct = true
       </CardHeader>
       <CardContent className="pb-4 pt-0 flex-grow">
         <div className="flex items-baseline mt-1 mb-3">
-          <span className="text-2xl font-bold text-agri-primary">${product.price.toFixed(2)}</span>
+          <span className="text-2xl font-bold text-agri-primary">{product.price.toFixed(2)} INT</span>
           <span className="text-muted-foreground text-sm ml-1">/ {product.quantity_unit}</span>
         </div>
         <div className="flex items-center text-sm">

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -54,7 +53,7 @@ const Cart = () => {
                                 Sold by: {item.product.seller?.full_name || 'Unknown Seller'}
                               </p>
                               <p className="text-sm text-muted-foreground mb-4">
-                                ${item.product.price.toFixed(2)} / {item.product.quantity_unit}
+                                {item.product.price.toFixed(2)} INT / {item.product.quantity_unit}
                               </p>
                             </div>
                             <Button 
@@ -88,7 +87,7 @@ const Cart = () => {
                               </Button>
                             </div>
                             <div className="font-bold text-lg">
-                              ${(item.product.price * item.quantity).toFixed(2)}
+                              {(item.product.price * item.quantity).toFixed(2)} INT
                             </div>
                           </div>
                         </div>
@@ -114,20 +113,20 @@ const Cart = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal ({cart.totalItems} items)</span>
-                        <span>${cart.totalPrice.toFixed(2)}</span>
+                        <span>{cart.totalPrice.toFixed(2)} INT</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Shipping Fee</span>
-                        <span>$5.00</span>
+                        <span>5.00 INT</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Tax</span>
-                        <span>${(cart.totalPrice * 0.07).toFixed(2)}</span>
+                        <span>{(cart.totalPrice * 0.07).toFixed(2)} INT</span>
                       </div>
                       <div className="border-t pt-3 mt-3">
                         <div className="flex justify-between font-semibold">
                           <span>Total</span>
-                          <span>${(cart.totalPrice + 5 + cart.totalPrice * 0.07).toFixed(2)}</span>
+                          <span>{(cart.totalPrice + 5 + cart.totalPrice * 0.07).toFixed(2)} INT</span>
                         </div>
                       </div>
                     </div>

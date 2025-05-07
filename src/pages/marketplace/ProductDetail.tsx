@@ -168,7 +168,7 @@ const ProductDetail = () => {
 
               <div className="flex items-baseline">
                 <span className="text-3xl font-bold text-agri-primary">
-                  ${parseFloat(product.price.toString()).toFixed(2)}
+                  {parseFloat(product.price.toString()).toFixed(2)} INT
                 </span>
                 <span className="text-muted-foreground ml-2">
                   / {product.quantity_unit}
