@@ -7,13 +7,10 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
   try {
     console.log(`Fetching order details for order ID: ${orderId}`);
     
-    // Fetch the order
+    // Fetch the order with basic information
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .select(`
-        *,
-        buyer:user_id (id, full_name, email)
-      `)
+      .select('*')
       .eq('id', orderId)
       .single();
 
@@ -22,22 +19,19 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       return null;
     }
 
-    // Handle buyer information - ensure it matches the expected type
-    const buyerInfo = orderData.buyer && 
-      typeof orderData.buyer === 'object' && 
-      orderData.buyer !== null 
-        ? {
-            id: (orderData.buyer as any)?.id || orderData.user_id,
-            full_name: (orderData.buyer as any)?.full_name || null,
-            email: (orderData.buyer as any)?.email || null
-          }
-        : {
-            id: orderData.user_id,
-            full_name: null,
-            email: null
-          };
+    // Fetch user/buyer information separately to avoid RLS recursion
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .eq('id', orderData.user_id)
+      .single();
 
-    // Fetch order items
+    if (userError) {
+      console.error('Error fetching user details:', userError);
+      // Continue anyway as we can show the order without user details
+    }
+
+    // Fetch order items separately
     const { data: orderItemsData, error: orderItemsError } = await supabase
       .from('order_items')
       .select('*')
@@ -118,7 +112,15 @@ export const getOrderById = async (orderId: string): Promise<Order | null> => {
       status: orderData.status as OrderStatus,
       shipping_address: orderData.shipping_address as Order['shipping_address'],
       items: itemsWithProducts,
-      buyer: buyerInfo
+      buyer: userData ? {
+        id: userData.id,
+        full_name: userData.full_name,
+        email: userData.email
+      } : {
+        id: orderData.user_id,
+        full_name: null,
+        email: null
+      }
     };
 
     console.log(`Successfully processed order ${orderId} with ${itemsWithProducts.length} items`);

@@ -3,13 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, ShoppingBag } from 'lucide-react';
+import { getOrderById } from '@/services/orders/userOrders';
+import { supabase } from '@/integrations/supabase/client';
 
 const OrderConfirmation = () => {
   const { orderId } = useParams();
@@ -36,6 +37,7 @@ const OrderConfirmation = () => {
           
           if (error) {
             console.error('Error verifying payment:', error);
+            setError('Payment verification failed: ' + (error.message || 'Could not verify your payment'));
             toast({
               title: 'Payment verification failed',
               description: error.message || 'Could not verify your payment',
@@ -50,6 +52,18 @@ const OrderConfirmation = () => {
             // If we have an order ID from the verification, navigate to it
             if (data.orderId && !orderId) {
               navigate(`/order-confirmation/${data.orderId}`, { replace: true });
+              
+              // Clear session ID from storage
+              localStorage.removeItem('stripe_session_id');
+              
+              toast({
+                title: 'Payment successful',
+                description: 'Your payment has been processed and your order has been placed',
+              });
+              
+              // Don't need to fetch the order yet since we'll navigate to the page with the order ID
+              setProcessingPayment(false);
+              return;
             }
             
             // Clear session ID from storage
@@ -60,17 +74,19 @@ const OrderConfirmation = () => {
               description: 'Your payment has been processed and your order has been placed',
             });
           } else {
+            setError('Payment incomplete: ' + (data?.message || 'Your payment has not been completed'));
             toast({
               title: 'Payment incomplete',
               description: data?.message || 'Your payment has not been completed',
               variant: 'destructive',
             });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error processing payment:', error);
+          setError('Error processing payment: ' + (error.message || 'An unexpected error occurred'));
           toast({
             title: 'Error processing payment',
-            description: 'An unexpected error occurred while processing your payment',
+            description: error.message || 'An unexpected error occurred',
             variant: 'destructive',
           });
         } finally {
@@ -91,8 +107,7 @@ const OrderConfirmation = () => {
         setLoading(true);
         setError(null);
         
-        // FIX: Modified query to correctly handle product relationship
-        // Instead of using nested select, use JOIN approach with getOrderById service
+        // Use the updated service function to get the order details
         const orderDetails = await getOrderById(orderId);
         
         if (!orderDetails) {
@@ -366,8 +381,11 @@ const OrderConfirmation = () => {
           </div>
           
           <div className="mt-8 text-center">
-            <Button asChild>
-              <Link to="/marketplace">Continue Shopping</Link>
+            <Button asChild className="gap-2">
+              <Link to="/marketplace">
+                <ShoppingBag className="h-4 w-4" />
+                Continue Shopping
+              </Link>
             </Button>
           </div>
         </div>
@@ -376,8 +394,5 @@ const OrderConfirmation = () => {
     </div>
   );
 };
-
-// Import the getOrderById service directly to properly fetch order details
-import { getOrderById } from '@/services/orders/userOrders';
 
 export default OrderConfirmation;
