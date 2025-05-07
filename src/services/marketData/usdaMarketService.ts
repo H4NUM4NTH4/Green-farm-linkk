@@ -1,12 +1,17 @@
 
 import { toast } from '@/components/ui/use-toast';
 
+export interface PriceDataPoint {
+  date: string;
+  price: number;
+}
+
 export interface MarketCrop {
   crop: string;
   currentPrice: number;
   predictedPrice: number;
   changePercentage: number;
-  priceHistory: { date: string; price: number }[];
+  priceHistory: PriceDataPoint[];
   factors: {
     weather: string;
     supply: string;

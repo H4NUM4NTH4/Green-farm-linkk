@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Calendar, Droplets, LineChart, Loader2 } from 'lucide-react';
@@ -13,6 +12,13 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { fetchMarketData } from '@/services/marketData/usdaMarketService';
+
+// Extended type for chart data points that can include prediction flag
+interface ChartDataPoint {
+  date: string; 
+  price: number;
+  isPredicted?: boolean;
+}
 
 const PricePrediction = () => {
   // Use React Query for data fetching with caching and automatic refetching
@@ -65,11 +71,11 @@ const PricePrediction = () => {
   };
 
   // Format chart data to include the predicted price
-  const formatChartData = () => {
+  const formatChartData = (): ChartDataPoint[] => {
     const cropData = getSelectedCropData();
     if (!cropData) return [];
     
-    const chartData = [...cropData.priceHistory];
+    const chartData = [...cropData.priceHistory] as ChartDataPoint[];
     const lastDate = new Date(chartData[chartData.length - 1].date);
     
     // Add predicted price point
