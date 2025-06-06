@@ -6,6 +6,7 @@ import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
+import { formatCurrency } from "@/lib/utils";
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -53,7 +54,7 @@ const Cart = () => {
                                 Sold by: {item.product.seller?.full_name || 'Unknown Seller'}
                               </p>
                               <p className="text-sm text-muted-foreground mb-4">
-                                {item.product.price.toFixed(2)} INT / {item.product.quantity_unit}
+                                {formatCurrency(item.product.price)} / {item.product.quantity_unit}
                               </p>
                             </div>
                             <Button 
@@ -87,7 +88,7 @@ const Cart = () => {
                               </Button>
                             </div>
                             <div className="font-bold text-lg">
-                              {(item.product.price * item.quantity).toFixed(2)} INT
+                              {formatCurrency(item.product.price * item.quantity)}
                             </div>
                           </div>
                         </div>
@@ -113,20 +114,20 @@ const Cart = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
                         <span>Subtotal ({cart.totalItems} items)</span>
-                        <span>{cart.totalPrice.toFixed(2)} INT</span>
+                        <span>{formatCurrency(cart.totalPrice)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Shipping Fee</span>
-                        <span>5.00 INT</span>
+                        <span>{formatCurrency(5)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Tax</span>
-                        <span>{(cart.totalPrice * 0.07).toFixed(2)} INT</span>
+                        <span>{formatCurrency(cart.totalPrice * 0.07)}</span>
                       </div>
                       <div className="border-t pt-3 mt-3">
                         <div className="flex justify-between font-semibold">
                           <span>Total</span>
-                          <span>{(cart.totalPrice + 5 + cart.totalPrice * 0.07).toFixed(2)} INT</span>
+                          <span>{formatCurrency(cart.totalPrice + 5 + cart.totalPrice * 0.07)}</span>
                         </div>
                       </div>
                     </div>

@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CheckCircle, ShoppingBag, AlertCircle, CreditCard, Loader2 } from 'lucide-react';
+import { formatCurrency } from "@/lib/utils";
 
 // Add a component that will load the Stripe script
 const StripeScriptLoader = () => {
@@ -342,7 +343,7 @@ const Checkout = () => {
                       </div>
                       <div>
                         <Label htmlFor="country">Country</Label>
-                        <Input id="country" {...register('country')} defaultValue="United States" />
+                        <Input id="country" {...register('country')}/>
                         {errors.country && (
                           <p className="text-sm text-red-500 mt-1">{errors.country.message}</p>
                         )}
@@ -430,11 +431,11 @@ const Checkout = () => {
                           <div>
                             <p>{item.product.name} × {item.quantity}</p>
                             <p className="text-sm text-muted-foreground">
-                              ${item.product.price.toFixed(2)} each
+                              {formatCurrency(item.product.price)} each
                             </p>
                           </div>
                           <p className="font-medium">
-                            ${(item.product.price * item.quantity).toFixed(2)}
+                            {formatCurrency(item.product.price * item.quantity)}
                           </p>
                         </div>
                       ))}
@@ -443,7 +444,7 @@ const Checkout = () => {
                       
                       <div className="flex justify-between font-medium">
                         <p>Subtotal</p>
-                        <p>${cart.totalPrice.toFixed(2)}</p>
+                        <p>{formatCurrency(cart.totalPrice)}</p>
                       </div>
                       
                       <div className="flex justify-between text-sm">
@@ -455,7 +456,7 @@ const Checkout = () => {
                       
                       <div className="flex justify-between font-bold">
                         <p>Total</p>
-                        <p>${cart.totalPrice.toFixed(2)}</p>
+                        <p>{formatCurrency(cart.totalPrice)}</p>
                       </div>
                     </>
                   )}
@@ -483,7 +484,7 @@ const Checkout = () => {
                 Total items: {cart.totalItems}
               </p>
               <p className="text-sm font-medium">
-                Total amount: ${cart.totalPrice.toFixed(2)}
+                Total amount: {formatCurrency(cart.totalPrice)}
               </p>
             </div>
             

@@ -150,8 +150,8 @@ const Marketplace = () => {
                       />
                     </div>
                     <div className="flex items-center justify-between text-sm mt-2">
-                      <span>${priceRange[0]}</span>
-                      <span>${priceRange[1]}</span>
+                      <span>₹{priceRange[0]}</span>
+                      <span>₹{priceRange[1]}</span>
                     </div>
                   </div>
                   
@@ -284,7 +284,7 @@ const Marketplace = () => {
                 )}
                 {(priceRange[0] > 0 || priceRange[1] < 100) && (
                   <Badge variant="secondary" className="flex items-center gap-1">
-                    Price: ${priceRange[0]} - ${priceRange[1]}
+                    Price: ₹{priceRange[0]} - ₹{priceRange[1]}
                     <button 
                       className="ml-1 h-4 w-4 rounded-full bg-muted-foreground/20 flex items-center justify-center hover:bg-muted-foreground/30"
                       onClick={() => setPriceRange([0, 100])}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -10,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { FileText, Printer } from 'lucide-react';
 import { Order } from '@/types/product';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatCurrency } from '@/lib/utils';
 
 interface ShippingDetailsModalProps {
   order: Order;
@@ -134,8 +133,8 @@ const ShippingDetailsModal: React.FC<ShippingDetailsModalProps> = ({ order, open
                     <tr>
                       <td>${item.product?.name || 'Product #' + item.product_id.substring(0, 8)}</td>
                       <td>${item.quantity}</td>
-                      <td>$${item.price.toFixed(2)}</td>
-                      <td>$${(item.price * item.quantity).toFixed(2)}</td>
+                      <td>${formatCurrency(item.price)}</td>
+                      <td>${formatCurrency(item.price * item.quantity)}</td>
                     </tr>
                   `).join('') || 'No items found'}
                 </tbody>

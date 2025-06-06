@@ -1,10 +1,10 @@
-
 -- Function to create an order without triggering RLS recursion
 CREATE OR REPLACE FUNCTION public.create_order(
   p_user_id UUID,
   p_total_amount NUMERIC,
   p_shipping_address JSONB,
-  p_payment_method TEXT
+  p_payment_method TEXT,
+  p_status TEXT DEFAULT 'pending'
 ) RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -24,7 +24,7 @@ BEGIN
     p_total_amount,
     p_shipping_address,
     p_payment_method,
-    'pending'
+    p_status
   )
   RETURNING id INTO v_order_id;
   

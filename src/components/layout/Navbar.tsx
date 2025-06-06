@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -165,6 +164,10 @@ const Navbar = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/dashboard/orders')}>
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>Orders</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/cart')}>
                       <ShoppingCart className="mr-2 h-4 w-4" />

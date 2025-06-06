@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 
@@ -65,9 +64,8 @@ serve(async (req) => {
     // Create the base URL for success and cancel
     const origin = req.headers.get("origin") || "http://localhost:5173";
     
-    // FIXED: Update success URL to redirect to a path our router recognizes
-    // Instead of using session_id as a query parameter, we'll handle it in the page
-    const successUrl = `${origin}/order-confirmation`;
+    // Update success URL to include session_id for Stripe
+    const successUrl = `${origin}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/checkout?canceled=true`;
     
     console.log(`Success URL: ${successUrl}`);

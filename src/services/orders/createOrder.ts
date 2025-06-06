@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CreateOrderInput } from './types';
 import { toast } from '@/components/ui/use-toast';
@@ -48,7 +47,7 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
         // Get product details to get the farmer_id
         const { data: product, error: productError } = await supabase
           .from('products')
-          .select('user_id')
+          .select('user_id, name')
           .eq('id', item.product_id)
           .single();
         
@@ -58,7 +57,7 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
         }
         
         const farmerId = product?.user_id;
-        console.log(`Found farmer ID ${farmerId} for product ${item.product_id}`);
+        console.log(`Found farmer ID ${farmerId} for product ${item.product_id} (${product?.name})`);
         
         if (!farmerId) {
           console.error(`No farmer ID found for product ${item.product_id}`);
@@ -81,10 +80,37 @@ export const createOrder = async (order: CreateOrderInput): Promise<string | nul
           console.error('Error adding order item:', itemError, 'for product:', item.product_id);
         } else {
           console.log(`Successfully added order item for product ${item.product_id} with farmer ${farmerId}`);
+          
+          // Verify the order item was created correctly
+          const { data: verifyItem, error: verifyError } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', orderId)
+            .eq('product_id', item.product_id)
+            .eq('farmer_id', farmerId)
+            .single();
+            
+          if (verifyError) {
+            console.error('Error verifying order item:', verifyError);
+          } else {
+            console.log('Verified order item:', verifyItem);
+          }
         }
       } catch (error) {
         console.error(`Error processing item ${item.product_id}:`, error);
       }
+    }
+
+    // Verify all order items were created
+    const { data: allOrderItems, error: verifyAllError } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', orderId);
+      
+    if (verifyAllError) {
+      console.error('Error verifying all order items:', verifyAllError);
+    } else {
+      console.log('All order items for order:', allOrderItems);
     }
 
     console.log('Order created successfully with ID:', orderId);

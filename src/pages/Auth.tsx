@@ -40,7 +40,7 @@ const AuthPage: React.FC = () => {
         navigate('/admin');
       } else {
         console.log("Redirecting to buyer dashboard");
-        navigate('/dashboard');
+        navigate('/dashboard');   
       }
     }
   }, [user, isLoading, profile, navigate]);

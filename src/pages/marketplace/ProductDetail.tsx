@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -12,6 +11,7 @@ import { ProductWithImages } from '@/types/product';
 import { useAuth } from '@/contexts/AuthContext';
 import { MapPin, Calendar, ShoppingCart, Edit, Star, ArrowLeft } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { formatCurrency } from "@/lib/utils";
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -168,7 +168,7 @@ const ProductDetail = () => {
 
               <div className="flex items-baseline">
                 <span className="text-3xl font-bold text-agri-primary">
-                  {parseFloat(product.price.toString()).toFixed(2)} INT
+                  {formatCurrency(product.price)}
                 </span>
                 <span className="text-muted-foreground ml-2">
                   / {product.quantity_unit}

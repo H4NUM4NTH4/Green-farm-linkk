@@ -10,6 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, CheckCircle, AlertTriangle, ShoppingBag, ArrowLeftIcon, PhoneIcon } from 'lucide-react';
 import { getOrderById } from '@/services/orders/userOrders';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from "@/lib/utils";
 
 const OrderConfirmation = () => {
   const { orderId: urlOrderId } = useParams();
@@ -329,9 +330,9 @@ const OrderConfirmation = () => {
                             <h3 className="font-medium">{item.product?.name || 'Product'}</h3>
                             <div className="flex justify-between">
                               <p className="text-sm text-muted-foreground">
-                                Quantity: {item.quantity} x {item.price?.toFixed(2)} INT
+                                Quantity: {item.quantity} x {formatCurrency(item.price)}
                               </p>
-                              <p className="font-medium">{(item.quantity * item.price)?.toFixed(2)} INT</p>
+                              <p className="font-medium">{formatCurrency(item.quantity * item.price)}</p>
                             </div>
                           </div>
                         </div>
@@ -364,7 +365,7 @@ const OrderConfirmation = () => {
                   
                   <div className="flex justify-between">
                     <p>Subtotal</p>
-                    <p className="font-medium">{getOrderTotal().toFixed(2)} INT</p>
+                    <p className="font-medium">{formatCurrency(getOrderTotal())}</p>
                   </div>
                   
                   <div className="flex justify-between text-sm">
@@ -376,7 +377,7 @@ const OrderConfirmation = () => {
                   
                   <div className="flex justify-between font-bold">
                     <p>Total</p>
-                    <p>{getOrderTotal().toFixed(2)} INT</p>
+                    <p>{formatCurrency(getOrderTotal())}</p>
                   </div>
                 </CardContent>
               </Card>

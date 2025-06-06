@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
@@ -20,6 +19,7 @@ import Footer from '@/components/layout/Footer';
 import { fetchProducts, deleteProduct } from '@/services/productService';
 import { ProductWithImages } from '@/types/product';
 import { Edit, Trash2, Plus, Eye, AlertTriangle } from 'lucide-react';
+import { formatCurrency } from "@/lib/utils";
 
 const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<ProductWithImages[]>([]);
@@ -154,7 +154,7 @@ const ProductManagement: React.FC = () => {
                               <span>{product.name}</span>
                             </div>
                           </TableCell>
-                          <TableCell>${product.price.toFixed(2)}</TableCell>
+                          <TableCell>{formatCurrency(product.price)}</TableCell>
                           <TableCell>
                             {product.quantity} {product.quantity_unit}
                           </TableCell>

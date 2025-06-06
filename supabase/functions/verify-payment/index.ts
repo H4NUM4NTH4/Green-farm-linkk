@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -70,16 +69,31 @@ serve(async (req) => {
         p_user_id: orderData.user_id,
         p_total_amount: orderData.total_amount,
         p_shipping_address: orderData.shipping_address,
-        p_payment_method: orderData.payment_method
+        p_payment_method: orderData.payment_method,
+        p_status: 'paid'
       }
     );
 
-    if (orderError) {
-      console.error(`Error creating order:`, orderError);
-      throw new Error(`Error creating order: ${orderError.message}`);
-    }
+    console.log(`Order created with ID:`, orderId);
 
-    console.log(`Order created with ID: ${orderId}`);
+    let finalOrderId = orderId;
+    // Fallback: If orderId is null, look up the order by payment_id (session.id)
+    if (!finalOrderId) {
+      const { data: foundOrder, error: findOrderError } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .eq('payment_id', session.id)
+        .maybeSingle();
+      if (findOrderError) {
+        console.error('Error finding order by payment_id:', findOrderError);
+      }
+      if (foundOrder && foundOrder.id) {
+        finalOrderId = foundOrder.id;
+        console.log('Found order by payment_id:', finalOrderId);
+      } else {
+        console.error('Order not found by payment_id:', session.id);
+      }
+    }
 
     // Process each line item to add to order_items
     const lineItems = await stripe.checkout.sessions.listLineItems(sessionId);
@@ -138,7 +152,7 @@ serve(async (req) => {
             const { error: itemError } = await supabaseAdmin.rpc(
               'add_order_item',
               {
-                p_order_id: orderId,
+                p_order_id: finalOrderId,
                 p_product_id: product.id,
                 p_quantity: item.quantity || 1,
                 p_price: product.price,
@@ -190,7 +204,7 @@ serve(async (req) => {
           const { error: itemError } = await supabaseAdmin.rpc(
             'add_order_item',
             {
-              p_order_id: orderId,
+              p_order_id: finalOrderId,
               p_product_id: productId,
               p_quantity: item.quantity,
               p_price: item.price || item.product?.price,
@@ -230,7 +244,7 @@ serve(async (req) => {
     // Return success response with order ID
     return new Response(JSON.stringify({ 
       success: true, 
-      orderId,
+      orderId: finalOrderId,
       session
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

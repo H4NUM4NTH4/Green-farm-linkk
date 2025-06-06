@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency } from "@/lib/utils";
 
 interface ProductCardProps {
   product: ProductWithImages;
@@ -73,7 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, linkToProduct = true
       </CardHeader>
       <CardContent className="pb-4 pt-0 flex-grow">
         <div className="flex items-baseline mt-1 mb-3">
-          <span className="text-2xl font-bold text-agri-primary">{product.price.toFixed(2)} INT</span>
+          <span className="text-2xl font-bold text-agri-primary">{formatCurrency(product.price)}</span>
           <span className="text-muted-foreground text-sm ml-1">/ {product.quantity_unit}</span>
         </div>
         <div className="flex items-center text-sm">

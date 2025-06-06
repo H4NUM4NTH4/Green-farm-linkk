@@ -12,6 +12,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { fetchMarketData } from '@/services/marketData/usdaMarketService';
+import { formatCurrency } from "@/lib/utils";
 
 // Extended type for chart data points that can include prediction flag
 interface ChartDataPoint {
@@ -124,9 +125,9 @@ const PricePrediction = () => {
                       </div>
                     </div>
                     <div className="flex justify-between items-baseline">
-                      <div className="text-muted-foreground">Current: ${item.currentPrice.toFixed(2)}</div>
+                      <div className="text-muted-foreground">Current: {formatCurrency(item.currentPrice)}</div>
                       <div className="text-lg font-bold text-agri-primary">
-                        ${item.predictedPrice.toFixed(2)}
+                        {formatCurrency(item.predictedPrice)}
                       </div>
                     </div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
@@ -183,11 +184,11 @@ const PricePrediction = () => {
                       }}
                     />
                     <YAxis 
-                      tickFormatter={(value) => `$${value}`}
+                      tickFormatter={(value) => formatCurrency(value)}
                       domain={['auto', 'auto']}
                     />
                     <Tooltip 
-                      formatter={(value) => [`$${value}`, 'Price']}
+                      formatter={(value) => [formatCurrency(value), 'Price']}
                       labelFormatter={(value) => {
                         const date = new Date(value);
                         return date.toLocaleDateString();
@@ -219,7 +220,7 @@ const PricePrediction = () => {
                     <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                     <span>Historical prices</span>
                     <div className="w-3 h-3 rounded-full bg-purple-500 ml-4 border-2 border-white"></div>
-                    <span>Predicted price ({getSelectedCropData()?.predictedPrice.toFixed(2)})</span>
+                    <span>Predicted price ({formatCurrency(getSelectedCropData()?.predictedPrice)})</span>
                   </div>
                 </div>
               </div>

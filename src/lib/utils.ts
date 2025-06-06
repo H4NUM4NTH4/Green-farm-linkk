@@ -1,4 +1,3 @@
-
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -16,5 +15,14 @@ export function formatDate(date: Date | string): string {
 }
 
 export function formatCurrency(amount: number): string {
-  return `${amount.toFixed(2)} INT`;
+  return `₹${amount.toFixed(2)}`;
+}
+
+export function formatCurrencyDetailed(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
 }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -23,6 +22,8 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { fetchMarketData } from '@/services/marketData/usdaMarketService';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
   const [activeAlert, setActiveAlert] = useState(0);
@@ -478,5 +479,47 @@ const Dashboard = () => {
     </div>
   );
 };
+
+function BuyerOrders() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOrders() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+      setOrders(data || []);
+      setLoading(false);
+    }
+    if (user?.id) fetchOrders();
+  }, [user?.id]);
+
+  if (loading) return <div className="p-8">Loading orders...</div>;
+  if (!orders.length) return <div className="p-8">No orders found.</div>;
+  return (
+    <div className="p-8">
+      <h2 className="text-xl font-bold mb-4">My Orders</h2>
+      <div className="space-y-4">
+        {orders.map(order => (
+          <div key={order.id} className="border rounded p-4">
+            <div className="flex justify-between">
+              <div>
+                <div className="font-semibold">Order #{order.id.slice(0, 8)}</div>
+                <div className="text-sm text-muted-foreground">Placed on {new Date(order.created_at).toLocaleDateString()}</div>
+                <div className="text-sm">Status: {order.status}</div>
+              </div>
+              <div className="font-bold text-lg">₹{order.total_amount}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default Dashboard;
