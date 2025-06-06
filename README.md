@@ -1,73 +1,139 @@
-# Welcome to your Lovable project
+# Market Linkages - Green Farm Link
 
-## Project info
+A modern web application for managing market linkages and farm connections, built with React, TypeScript, and Supabase.
 
-**URL**: https://lovable.dev/projects/015de472-bea2-4915-8e08-6de411a045b5
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/H4NUM4NTH4/Green-farm-linkk.git)
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+- Real-time chat functionality
+- Order management system
+- Internationalization support
+- Modern UI with Tailwind CSS
+- Type-safe development with TypeScript
+- Supabase backend integration
 
-**Use Lovable**
+## 🛠️ Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/015de472-bea2-4915-8e08-6de411a045b5) and start prompting.
+- **Frontend:**
+  - React
+  - TypeScript
+  - Vite
+  - Tailwind CSS
+  - ESLint
+  - PostCSS
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Backend:**
+  - Supabase
+  - Real-time database
+  - Authentication
+  - Storage
 
-**Use your preferred IDE**
+## 📁 Project Structure
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+green-farm-link/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/         # Page-level components
+│   ├── services/      # API and service integrations
+│   ├── hooks/         # Custom React hooks
+│   ├── contexts/      # React context providers
+│   ├── lib/           # Utility functions
+│   ├── types/         # TypeScript type definitions
+│   ├── i18n/          # Internationalization
+│   └── integrations/  # Third-party integrations
+├── supabase/          # Supabase configuration
+└── public/            # Static assets
 ```
 
-**Edit a file directly in GitHub**
+## 🚀 Getting Started
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Prerequisites
 
-**Use GitHub Codespaces**
+- Node.js (v14 or higher)
+- npm or yarn
+- Supabase account
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Installation
 
-## What technologies are used for this project?
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/H4NUM4NTH4/Green-farm-linkk.git]
+   cd green-farm-link
+   ```
 
-This project is built with .
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+3. Set up environment variables:
+   Create a `.env` file in the root directory and add your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-## How can I deploy this project?
+4. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
-Simply open [Lovable](https://lovable.dev/projects/015de472-bea2-4915-8e08-6de411a045b5) and click on Share -> Publish.
+## 🏗️ Building for Production
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+npm run build
+# or
+yarn build
+```
 
-Yes it is!
+## 🧪 Running Tests
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```bash
+npm run test
+# or
+yarn test
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📝 Code Style
+
+This project uses ESLint for code linting and formatting. The configuration can be found in `eslint.config.js`.
+
+## 🌐 Internationalization
+
+The project supports multiple languages through the i18n setup in the `src/i18n` directory.
+
+## 🔒 Security
+
+- Environment variables are used for sensitive information
+- Supabase authentication is implemented
+- Type safety with TypeScript
+- ESLint for code quality
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 👥 Authors
+
+- Your Name - Initial work
+
+## 🙏 Acknowledgments
+
+- Supabase for backend services
+- Vite for build tooling
+- Tailwind CSS for styling
+- React team for the amazing framework 
