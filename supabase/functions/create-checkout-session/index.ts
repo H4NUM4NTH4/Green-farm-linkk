@@ -65,7 +65,7 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "http://localhost:5173";
     
     // Update success URL to include session_id for Stripe
-    const successUrl = `${origin}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${origin}/order-confirmation?session_id={CHECKOUT_SESSION_ID}&orderId={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/checkout?canceled=true`;
     
     console.log(`Success URL: ${successUrl}`);
